@@ -1,0 +1,16 @@
+{
+  "pages": [
+    { "path": "pages/ai-briefing/index", "style": {
+        "navigationBarTitleText": "经营早报",
+        "enablePullDownRefresh": true,
+        "navigationBarBackgroundColor": "#f5f7fa"
+    } },
+    { "path": "pages/ai-briefing/history",        "style": { "navigationBarTitleText": "历史早报" } },
+    { "path": "pages/ai-briefing/layout-setting", "style": { "navigationBarTitleText": "早报设置" } }
+  ],
+  "globalStyle": {
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f5f7fa"
+  }
+}

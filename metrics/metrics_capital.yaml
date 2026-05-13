@@ -20,8 +20,8 @@ metrics:
 
   - { name: customer_capital_days, label: 客户资金占用天数, code: M134,
       synonyms: [现金循环周期, CCC],
-      requires_metrics: [customer_dso, customer_inv_days, customer_dpo_offset]
-      formula: "customer_dso + customer_inv_days - customer_dpo_offset"
+      requires_metrics: [customer_dso, customer_inv_days, customer_dpo_offset],
+      formula: "customer_dso + customer_inv_days - customer_dpo_offset",
       format: days }
 
   - { name: customer_dso, label: 客户DSO, code: M135,

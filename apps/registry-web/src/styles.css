@@ -1,0 +1,12 @@
+html, body, #app { height: 100%; margin: 0; }
+body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f5f7fa; }
+.page { padding: 16px 24px; }
+.toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+.kpi-card { padding: 16px; }
+.kpi-card .num { font-size: 28px; font-weight: 600; color: #1f2937; }
+.kpi-card .label { color: #6b7280; font-size: 13px; }
+.section-title { font-size: 14px; color: #6b7280; margin-bottom: 8px; font-weight: 600; }
+.sql-preview { background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 4px; font-family: Menlo, Consolas, monospace; font-size: 12px; overflow-x: auto; white-space: pre-wrap; }
+.metric-label { font-weight: 600; }
+.metric-code { color: #6b7280; font-size: 12px; }
+.tag-row { display: flex; gap: 4px; flex-wrap: wrap; }
