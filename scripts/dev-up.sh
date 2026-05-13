@@ -55,6 +55,10 @@ cat <<EOF
   DSL 编译器 API:  http://localhost:8000/docs
   报表 CRUD API:   http://localhost:8080/api/v1/scheduled-reports
   报表调度器 API:  http://localhost:8100/health
+  计费服务 API:    http://localhost:8081/api/v1/billing/wallet/1
+  AI 编排器 SSE:   http://localhost:8200/v1/chat/messages
+  风控告警 API:    http://localhost:8300/internal/rules
+  预测服务 API:    http://localhost:8400/v1/forecast/fit
   StarRocks MySQL: localhost:9030 (root, 无密码)
   StarRocks HTTP:  http://localhost:8030
   MySQL:           localhost:3306 (root / steeldev)

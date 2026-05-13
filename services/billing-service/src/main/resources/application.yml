@@ -1,0 +1,27 @@
+server:
+  port: ${PORT:8081}
+  servlet:
+    context-path: /api/v1
+
+spring:
+  application:
+    name: billing-service
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/steel_billing?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8mb4}
+    username: ${DB_USER:root}
+    password: ${DB_PASS:steeldev}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 3s
+  jackson:
+    default-property-inclusion: NON_NULL
+
+billing:
+  lua-dir: ${LUA_DIR:/app/billing-lua}
+  reservation-timeout-sec: 180
+
+logging:
+  level:
+    com.steel.billing: INFO

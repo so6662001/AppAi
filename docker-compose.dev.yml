@@ -64,6 +64,83 @@ services:
       - redis_data:/data
     restart: unless-stopped
 
+  # ----------------------- 计费服务 (Java + Lua) -----------------------
+  billing-service:
+    build:
+      context: ./services/billing-service
+    container_name: steel-billing-service
+    ports:
+      - "8081:8081"
+    environment:
+      - DB_URL=jdbc:mysql://mysql:3306/steel_billing?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8mb4
+      - DB_USER=root
+      - DB_PASS=steeldev
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - LUA_DIR=/app/billing-lua
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./services/billing-lua:/app/billing-lua:ro
+    depends_on:
+      mysql: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
+
+  # ----------------------- AI 编排 (Python) -----------------------
+  chat-orchestrator:
+    build:
+      context: ./services/chat-orchestrator
+    container_name: steel-chat-orchestrator
+    ports:
+      - "8200:8200"
+    environment:
+      - METRICS_DIR=/app/metrics
+      - DSL_COMPILER_URL=http://dsl-compiler:8000
+      - BILLING_URL=http://billing-service:8081/api/v1
+      - SR_JDBC_URL=jdbc:mysql://starrocks:9030/steel_dw
+      - SR_USER=root
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./metrics:/app/metrics:ro
+    depends_on:
+      dsl-compiler: { condition: service_started }
+    restart: unless-stopped
+
+  # ----------------------- 风控告警 (Python) -----------------------
+  risk-alert-service:
+    build:
+      context: ./services/risk-alert-service
+    container_name: steel-risk-alert
+    ports:
+      - "8300:8300"
+    environment:
+      - DB_URL=mysql+pymysql://root:steeldev@mysql:3306/steel_chat?charset=utf8mb4
+      - METRICS_DIR=/app/metrics
+      - DSL_COMPILER_URL=http://dsl-compiler:8000
+      - REDIS_HOST=redis
+      - SCAN_INTERVAL=3600
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./metrics:/app/metrics:ro
+    depends_on:
+      mysql: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
+
+  # ----------------------- 预测 (Python) -----------------------
+  forecast-service:
+    build:
+      context: ./services/forecast-service
+    container_name: steel-forecast
+    ports:
+      - "8400:8400"
+    environment:
+      - SR_JDBC_URL=jdbc:mysql://starrocks:9030/steel_dw
+      - SR_USER=root
+      - USE_PROPHET=false
+      - TZ=Asia/Shanghai
+    restart: unless-stopped
+
   # ----------------------- 报表 CRUD API (Java) -----------------------
   report-service:
     build:
