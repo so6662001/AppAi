@@ -13,8 +13,11 @@ class Settings(BaseModel):
     sr_jdbc_url: str = os.environ.get("SR_JDBC_URL", "jdbc:mysql://localhost:9030/steel_dw")
     sr_user: str = os.environ.get("SR_USER", "root")
     sr_pass: str = os.environ.get("SR_PASS", "")
-    llm_provider: str = os.environ.get("LLM_PROVIDER", "rule")     # rule/deepseek/qwen
+    llm_provider: str = os.environ.get("LLM_PROVIDER", "rule")     # rule/deepseek/qwen/local
     llm_api_key: str | None = os.environ.get("LLM_API_KEY")
+    llm_model: str | None = os.environ.get("LLM_MODEL")
+    db_url: str = os.environ.get("DB_URL",
+        "mysql+pymysql://root:steeldev@localhost:3306/steel_chat?charset=utf8mb4")
     api_host: str = os.environ.get("API_HOST", "0.0.0.0")
     api_port: int = int(os.environ.get("API_PORT", 8200))
 

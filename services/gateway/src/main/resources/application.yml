@@ -1,0 +1,46 @@
+server:
+  port: ${PORT:8000}
+
+spring:
+  application:
+    name: gateway
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origin-patterns: ["*"]
+            allowed-methods: ["*"]
+            allowed-headers: ["*"]
+            allow-credentials: true
+      routes:
+        - id: dsl-compiler
+          uri: ${DSL_COMPILER_URL:http://dsl-compiler:8000}
+          predicates: [Path=/v1/dsl/**]
+        - id: chat
+          uri: ${CHAT_URL:http://chat-orchestrator:8200}
+          predicates: [Path=/v1/chat/**]
+        - id: briefing
+          uri: ${BRIEFING_URL:http://briefing-service:8500}
+          predicates: [Path=/v1/briefing/**]
+        - id: report
+          uri: ${REPORT_URL:http://report-service:8080}
+          predicates: [Path=/v1/scheduled-reports/**,/v1/notify-configs/**]
+        - id: billing
+          uri: ${BILLING_URL:http://billing-service:8081}
+          predicates: [Path=/v1/billing/**]
+        - id: payment
+          uri: ${PAYMENT_URL:http://payment-service:8082}
+          predicates: [Path=/v1/payment/**]
+        - id: registry
+          uri: ${REGISTRY_URL:http://metric-registry-service:8090}
+          predicates: [Path=/api/registry/**]
+
+auth:
+  jwt-secret: ${JWT_SECRET:change-me-to-a-strong-secret-at-least-32-bytes-long}
+  # 白名单 - 不需要鉴权的路径
+  whitelist:
+    - /health
+    - /actuator/**
+    - /v1/auth/login
+    - /v1/payment/notify/**

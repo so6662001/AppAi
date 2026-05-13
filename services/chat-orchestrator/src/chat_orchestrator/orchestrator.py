@@ -8,10 +8,12 @@ from typing import AsyncIterator
 import httpx
 
 from .config import settings
-from .intent import detect
+from .intent import detect, Intent
 from .dsl_builder import build_dsl
 from .registry_client import load_synonyms
 from .renderer import render
+from .llm import LLMClient
+from . import session as session_db
 
 
 log = logging.getLogger("chat.orchestrator")
@@ -19,15 +21,44 @@ log = logging.getLogger("chat.orchestrator")
 # 启动时加载一次同义词
 _SYN_FLAT, _SYN_TO_METRIC = load_synonyms(settings.metrics_dir)
 
+# LLM 客户端
+_llm = LLMClient(provider=settings.llm_provider,
+                 api_key=settings.llm_api_key,
+                 model=settings.llm_model)
+
 
 async def stream(text: str, tenant_id: int, user_id: int, business_line: str = "TRADE",
                  session_id: str | None = None) -> AsyncIterator[dict]:
     """SSE 事件生成器, yield dict {event, data}."""
     msg_id = uuid.uuid4().hex
 
+    # 会话持久化
+    if not session_id:
+        session_id = session_db.new_session_id()
+    session_db.ensure_session(session_id, tenant_id, user_id, business_line=business_line,
+                              title=text[:30] if text else None)
+    user_msg_id = session_db.save_user_message(session_id, tenant_id, user_id, text)
+
     # 1. 意图 + 槽位
     yield {"event": "status", "data": {"phase": "parsing"}}
     intent = detect(text, _SYN_FLAT)
+
+    # LLM 兜底: 规则未命中任何指标时调 LLM 抽取
+    if not intent.metrics_keywords and _llm.enabled:
+        llm_intent = _llm.intent_extract(text, list(_SYN_TO_METRIC.values()))
+        if llm_intent:
+            # 把 LLM 输出的指标名当成"同义词"塞回 intent
+            for m in (llm_intent.get("metrics") or []):
+                if m in _SYN_TO_METRIC.values():
+                    # 找到原始 syn key
+                    for k, v in _SYN_TO_METRIC.items():
+                        if v == m and k not in intent.metrics_keywords:
+                            intent.metrics_keywords.append(k); break
+            if llm_intent.get("time_preset"): intent.time_preset = llm_intent["time_preset"]
+            for d in (llm_intent.get("dimensions") or []):
+                if d not in intent.dimensions: intent.dimensions.append(d)
+            if llm_intent.get("compare"): intent.compare = llm_intent["compare"]
+            if llm_intent.get("top_n"):   intent.top_n = int(llm_intent["top_n"])
     yield {"event": "meta", "data": {
         "messageId": msg_id, "intent": intent.type,
         "metricsMatched": intent.metrics_keywords,
@@ -59,7 +90,9 @@ async def stream(text: str, tenant_id: int, user_id: int, business_line: str = "
     rows = _execute_sql(compiled["sql"], compiled.get("params") or {})
 
     # 5. 渲染 blocks
-    blocks, summary = render(rows, dsl)
+    blocks, base_summary = render(rows, dsl)
+    # 5b. LLM 优化总结 (失败时 fallback 原生)
+    summary = _llm.summarize(rows, dsl, base_summary) if _llm.enabled else base_summary
     for b in blocks:
         yield {"event": "data", "data": b}
 
@@ -74,15 +107,28 @@ async def stream(text: str, tenant_id: int, user_id: int, business_line: str = "
         yield {"event": "drilldown_suggestion", "data": drilldowns}
 
     # 8. 用量上报 (含 reservation 预估)
-    yield {"event": "usage", "data": {
+    usage = {
         "inputTokens": len(text) // 2,
         "outputTokens": len(summary) // 2,
         "queryRows": len(rows),
         "cacheHit": False,
         "bizTokensCharged": compiled.get("biz_token_estimate") or 200,
-    }}
+        "bucket": "MIX",
+    }
+    yield {"event": "usage", "data": usage}
 
-    yield {"event": "done", "data": {"messageId": msg_id}}
+    # 持久化 assistant 消息
+    session_db.save_assistant_message(
+        session_id=session_id, tenant_id=tenant_id,
+        msg_id=msg_id, blocks=blocks, summary=summary, dsl=dsl,
+        sql_text=compiled.get("sql"),
+        metrics_used=compiled.get("metrics_expanded") or [],
+        usage=usage,
+        model_name=(settings.llm_model or settings.llm_provider),
+        parent_message_id=user_msg_id,
+    )
+
+    yield {"event": "done", "data": {"messageId": msg_id, "sessionId": session_id}}
 
 
 def _execute_sql(sql: str, params: dict) -> list[dict]:

@@ -1,0 +1,12 @@
+# 每周一 02:00: 预测模型全量重训 + ABC 重算
+name: steel_weekly_retrain
+schedule:
+  cron: "0 0 2 ? * MON *"
+  timezone: Asia/Shanghai
+tasks:
+  - { name: forecast_full_retrain, type: HTTP,
+      url: "http://forecast-service:8400/internal/full-retrain", method: POST }
+  - { name: abc_refresh, type: HTTP,
+      url: "http://etl-runner:8700/internal/run/abc_monthly_refresh", method: POST,
+      deps: [forecast_full_retrain] }
+notify: { on_failure: [钉钉群机器人] }

@@ -1,0 +1,22 @@
+server:
+  port: ${PORT:8082}
+  servlet: { context-path: /api/v1 }
+spring:
+  application: { name: payment-service }
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/steel_billing?useSSL=false&serverTimezone=Asia/Shanghai}
+    username: ${DB_USER:root}
+    password: ${DB_PASS:steeldev}
+
+billing:
+  base-url: ${BILLING_URL:http://localhost:8081/api/v1}
+
+# 支付凭证 - 生产由 Secret 注入
+payment:
+  wechat:
+    app-id: ${WECHAT_APP_ID:}
+    mch-id: ${WECHAT_MCH_ID:}
+    api-key: ${WECHAT_API_KEY:}
+  alipay:
+    app-id: ${ALIPAY_APP_ID:}
+    private-key: ${ALIPAY_PRIVATE_KEY:}
