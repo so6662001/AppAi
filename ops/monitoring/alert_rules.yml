@@ -1,0 +1,48 @@
+groups:
+  - name: steel-ai-platform
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: "Service {{ $labels.job }} down"
+
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_server_requests_seconds_count{outcome="SERVER_ERROR"}[5m])) by (job)
+          /
+          sum(rate(http_server_requests_seconds_count[5m])) by (job)
+          > 0.05
+        for: 5m
+        labels: { severity: high }
+        annotations:
+          summary: "{{ $labels.job }} 5xx 错误率 > 5%"
+
+      - alert: SlowAPI
+        expr: histogram_quantile(0.95, rate(http_server_requests_seconds_bucket[5m])) > 2
+        for: 10m
+        labels: { severity: medium }
+        annotations:
+          summary: "{{ $labels.job }} P95 > 2s"
+
+      - alert: LowDiskSpace
+        expr: node_filesystem_avail_bytes / node_filesystem_size_bytes < 0.10
+        for: 5m
+        labels: { severity: high }
+        annotations:
+          summary: "磁盘剩余空间 < 10%"
+
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes / 1024 / 1024 > 2000
+        for: 10m
+        labels: { severity: medium }
+        annotations:
+          summary: "{{ $labels.job }} 内存占用 > 2GB"
+
+      - alert: DqEventBacklog
+        expr: increase(dq_event_open_total[1h]) > 10
+        for: 30m
+        labels: { severity: medium }
+        annotations:
+          summary: "未解决的数据质量事件积压"

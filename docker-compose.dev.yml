@@ -48,6 +48,7 @@ services:
       - ./ddl/11_briefing.sql:/docker-entrypoint-initdb.d/11_briefing.sql:ro
       - ./ddl/12_scheduled_reports.sql:/docker-entrypoint-initdb.d/12_scheduled_reports.sql:ro
       - ./ddl/13_tenant_notify_config.sql:/docker-entrypoint-initdb.d/13_tenant_notify_config.sql:ro
+      - ./ddl/14_rbac.sql:/docker-entrypoint-initdb.d/14_rbac.sql:ro
     restart: unless-stopped
 
   redis:
@@ -125,6 +126,107 @@ services:
     depends_on:
       mysql: { condition: service_healthy }
       redis: { condition: service_healthy }
+    restart: unless-stopped
+
+  # ----------------------- API Gateway (Java) -----------------------
+  gateway:
+    build: ./services/gateway
+    container_name: steel-gateway
+    ports: ["8000:8000"]
+    environment:
+      - DSL_COMPILER_URL=http://dsl-compiler:8000
+      - CHAT_URL=http://chat-orchestrator:8200
+      - BRIEFING_URL=http://briefing-service:8500
+      - REPORT_URL=http://report-service:8080
+      - BILLING_URL=http://billing-service:8081
+      - PAYMENT_URL=http://payment-service:8082
+      - REGISTRY_URL=http://metric-registry-service:8090
+      - JWT_SECRET=${JWT_SECRET:-change-me-to-a-strong-secret-at-least-32-bytes-long}
+    restart: unless-stopped
+
+  # ----------------------- 支付 (Java) -----------------------
+  payment-service:
+    build: ./services/payment-service
+    container_name: steel-payment
+    ports: ["8082:8082"]
+    environment:
+      - DB_URL=jdbc:mysql://mysql:3306/steel_billing?useSSL=false&serverTimezone=Asia/Shanghai
+    depends_on: { mysql: { condition: service_healthy } }
+    restart: unless-stopped
+
+  # ----------------------- 指标注册中心后端 (Java) -----------------------
+  metric-registry-service:
+    build: ./services/metric-registry-service
+    container_name: steel-metric-registry
+    ports: ["8090:8090"]
+    environment:
+      - DB_URL=jdbc:mysql://mysql:3306/steel_governance?useSSL=false&serverTimezone=Asia/Shanghai
+    depends_on: { mysql: { condition: service_healthy } }
+    restart: unless-stopped
+
+  # ----------------------- AI 早报后端 (Python) -----------------------
+  briefing-service:
+    build: ./services/briefing-service
+    container_name: steel-briefing
+    ports: ["8500:8500"]
+    environment:
+      - DB_URL=mysql+pymysql://root:steeldev@mysql:3306/steel_chat?charset=utf8mb4
+      - TZ=Asia/Shanghai
+    depends_on: { mysql: { condition: service_healthy } }
+    restart: unless-stopped
+
+  # ----------------------- 建议引擎 (Python) -----------------------
+  advice-engine:
+    build: ./services/advice-engine
+    container_name: steel-advice
+    ports: ["8600:8600"]
+    environment:
+      - DB_URL=mysql+pymysql://root:steeldev@mysql:3306/steel_chat?charset=utf8mb4
+      - METRICS_DIR=/app/metrics
+    volumes:
+      - ./metrics:/app/metrics:ro
+    depends_on: { mysql: { condition: service_healthy } }
+    restart: unless-stopped
+
+  # ----------------------- ETL Runner (Python) -----------------------
+  etl-runner:
+    build: ./services/etl-runner
+    container_name: steel-etl-runner
+    ports: ["8700:8700"]
+    environment:
+      - SR_HOST=starrocks
+    depends_on: { starrocks: { condition: service_healthy } }
+    restart: unless-stopped
+
+  # ----------------------- 查询引擎 (Python) -----------------------
+  query-engine:
+    build: ./services/query-engine
+    container_name: steel-query-engine
+    ports: ["8800:8800"]
+    environment:
+      - SR_HOST=starrocks
+      - REDIS_HOST=redis
+    depends_on:
+      starrocks: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
+
+  # ----------------------- 数据质量监控 (Python) -----------------------
+  data-quality-monitor:
+    build: ./services/data-quality-monitor
+    container_name: steel-dq
+    ports: ["8900:8900"]
+    restart: unless-stopped
+
+  # ----------------------- RAG + 多模型路由 (Python) -----------------------
+  rag-service:
+    build: ./services/rag-service
+    container_name: steel-rag
+    ports: ["8950:8950"]
+    volumes:
+      - ./metrics:/app/metrics:ro
+    environment:
+      - METRICS_DIR=/app/metrics
     restart: unless-stopped
 
   # ----------------------- 预测 (Python) -----------------------

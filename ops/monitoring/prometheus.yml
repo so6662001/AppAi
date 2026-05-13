@@ -1,0 +1,63 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: [alertmanager:9093]
+
+rule_files:
+  - /etc/prometheus/alert_rules.yml
+
+scrape_configs:
+
+  # Spring Boot Actuator
+  - job_name: report-service
+    metrics_path: /api/v1/actuator/prometheus
+    static_configs: [{ targets: [report-service:8080] }]
+  - job_name: billing-service
+    metrics_path: /api/v1/actuator/prometheus
+    static_configs: [{ targets: [billing-service:8081] }]
+  - job_name: payment-service
+    metrics_path: /api/v1/actuator/prometheus
+    static_configs: [{ targets: [payment-service:8082] }]
+  - job_name: metric-registry-service
+    metrics_path: /api/registry/v1/actuator/prometheus
+    static_configs: [{ targets: [metric-registry-service:8090] }]
+  - job_name: gateway
+    metrics_path: /actuator/prometheus
+    static_configs: [{ targets: [gateway:8000] }]
+
+  # Python services with /metrics (建议接入 prometheus-fastapi-instrumentator)
+  - job_name: dsl-compiler
+    metrics_path: /metrics
+    static_configs: [{ targets: [dsl-compiler:8000] }]
+  - job_name: chat-orchestrator
+    static_configs: [{ targets: [chat-orchestrator:8200] }]
+  - job_name: report-scheduler
+    static_configs: [{ targets: [report-scheduler:8100] }]
+  - job_name: risk-alert-service
+    static_configs: [{ targets: [risk-alert-service:8300] }]
+  - job_name: forecast-service
+    static_configs: [{ targets: [forecast-service:8400] }]
+  - job_name: briefing-service
+    static_configs: [{ targets: [briefing-service:8500] }]
+  - job_name: advice-engine
+    static_configs: [{ targets: [advice-engine:8600] }]
+  - job_name: etl-runner
+    static_configs: [{ targets: [etl-runner:8700] }]
+  - job_name: query-engine
+    static_configs: [{ targets: [query-engine:8800] }]
+  - job_name: dq-monitor
+    static_configs: [{ targets: [data-quality-monitor:8900] }]
+  - job_name: rag-service
+    static_configs: [{ targets: [rag-service:8950] }]
+
+  # 基础设施
+  - job_name: mysql-exporter
+    static_configs: [{ targets: [mysql-exporter:9104] }]
+  - job_name: redis-exporter
+    static_configs: [{ targets: [redis-exporter:9121] }]
+  - job_name: node-exporter
+    static_configs: [{ targets: [node-exporter:9100] }]

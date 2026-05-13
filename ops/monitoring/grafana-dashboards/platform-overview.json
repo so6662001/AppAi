@@ -1,0 +1,18 @@
+{
+  "title": "Steel AI Platform - Overview",
+  "tags": ["steel", "overview"],
+  "panels": [
+    { "id": 1, "title": "Services Up", "type": "stat",
+      "targets": [{ "expr": "count(up == 1)" }] },
+    { "id": 2, "title": "QPS by Service", "type": "graph",
+      "targets": [{ "expr": "sum(rate(http_server_requests_seconds_count[1m])) by (job)" }] },
+    { "id": 3, "title": "P95 Latency", "type": "graph",
+      "targets": [{ "expr": "histogram_quantile(0.95, rate(http_server_requests_seconds_bucket[5m]))" }] },
+    { "id": 4, "title": "Error Rate", "type": "graph",
+      "targets": [{ "expr": "sum(rate(http_server_requests_seconds_count{outcome=\"SERVER_ERROR\"}[5m])) by (job)" }] },
+    { "id": 5, "title": "AI Token Usage Daily (CNY)", "type": "stat",
+      "targets": [{ "expr": "sum(increase(biz_token_charged_total[24h])) * 0.0004" }] },
+    { "id": 6, "title": "Cache Hit Rate", "type": "gauge",
+      "targets": [{ "expr": "rate(query_cache_hit_total[5m]) / rate(query_total[5m])" }] }
+  ]
+}

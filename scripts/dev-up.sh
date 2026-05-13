@@ -50,15 +50,40 @@ echo
 echo "== 服务地址 =="
 cat <<EOF
 
+  ============= 前端 =============
   指标注册中心:    http://localhost:5173
   AI 经营早报 H5:  http://localhost:5174
-  DSL 编译器 API:  http://localhost:8000/docs
-  报表 CRUD API:   http://localhost:8080/api/v1/scheduled-reports
-  报表调度器 API:  http://localhost:8100/health
-  计费服务 API:    http://localhost:8081/api/v1/billing/wallet/1
-  AI 编排器 SSE:   http://localhost:8200/v1/chat/messages
-  风控告警 API:    http://localhost:8300/internal/rules
-  预测服务 API:    http://localhost:8400/v1/forecast/fit
+
+  ============= 网关 + 业务 API =============
+  Gateway 统一入口: http://localhost:8000  (JWT, 推荐通过它)
+    /v1/auth/login (登录拿 JWT, demo 密码=demo)
+    /v1/chat/messages (SSE)
+    /v1/briefing/today
+    /v1/scheduled-reports
+    /v1/billing/wallet/{tid}
+    /v1/payment/orders
+    /api/registry/v1/metrics
+
+  ============= 各服务直接端口 (开发用) =============
+  DSL 编译器 API:  http://localhost:8000/docs (注: 与 gateway 端口冲突, 生产 gateway 占 8000)
+  报表 CRUD API:   http://localhost:8080
+  计费服务 API:    http://localhost:8081
+  支付服务 API:    http://localhost:8082
+  指标注册后端:    http://localhost:8090
+  报表调度器:      http://localhost:8100
+  AI 编排器 SSE:   http://localhost:8200
+  风控告警:        http://localhost:8300
+  预测服务:        http://localhost:8400
+  AI 早报后端:     http://localhost:8500
+  建议引擎:        http://localhost:8600
+  ETL Runner:      http://localhost:8700
+  查询引擎:        http://localhost:8800
+  数据质量监控:    http://localhost:8900
+  RAG/模型路由:    http://localhost:8950
+
+  ============= 监控 (启动 ops/monitoring/docker-compose.monitoring.yml 后) =============
+  Prometheus:      http://localhost:9090
+  Grafana:         http://localhost:3000  (admin/admin)
   StarRocks MySQL: localhost:9030 (root, 无密码)
   StarRocks HTTP:  http://localhost:8030
   MySQL:           localhost:3306 (root / steeldev)

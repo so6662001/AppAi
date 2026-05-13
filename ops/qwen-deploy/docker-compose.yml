@@ -1,0 +1,34 @@
+version: '3.8'
+services:
+  qwen-vllm:
+    image: vllm/vllm-openai:latest
+    container_name: qwen-vllm
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ~/.cache/huggingface:/root/.cache/huggingface
+    ports:
+      - "8001:8000"
+    ipc: host
+    command:
+      - --model=Qwen/Qwen2.5-7B-Instruct
+      - --served-model-name=Qwen2.5-7B-Instruct
+      - --gpu-memory-utilization=0.85
+      - --max-model-len=8192
+      - --enable-prefix-caching
+    restart: unless-stopped
+
+  bge-m3:
+    image: ghcr.io/xorbitsai/inference:latest
+    container_name: bge-m3
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    ports:
+      - "9997:9997"
+    command:
+      - xinference-local
+      - --host=0.0.0.0
+      - --port=9997
+    restart: unless-stopped

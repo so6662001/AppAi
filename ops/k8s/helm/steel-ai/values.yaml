@@ -1,0 +1,105 @@
+image:
+  registry: harbor.steel-ai.com
+  pullPolicy: IfNotPresent
+  tag: "0.1.0"
+
+namespace: steel-ai
+
+# 各服务统一配置 (覆盖在 values-prod.yaml)
+services:
+  gateway:
+    enabled: true
+    replicas: 2
+    port: 8000
+    resources: { requests: { cpu: 200m, memory: 256Mi }, limits: { cpu: 1, memory: 512Mi } }
+  dsl-compiler:
+    enabled: true
+    replicas: 2
+    port: 8000
+  chat-orchestrator:
+    enabled: true
+    replicas: 3
+    port: 8200
+    env:
+      LLM_PROVIDER: deepseek
+  briefing-service:
+    enabled: true
+    replicas: 1
+    port: 8500
+  advice-engine:
+    enabled: true
+    replicas: 1
+    port: 8600
+  risk-alert-service:
+    enabled: true
+    replicas: 1
+    port: 8300
+  forecast-service:
+    enabled: true
+    replicas: 1
+    port: 8400
+  query-engine:
+    enabled: true
+    replicas: 3
+    port: 8800
+  report-service:
+    enabled: true
+    replicas: 2
+    port: 8080
+  report-scheduler:
+    enabled: true
+    replicas: 1
+    port: 8100
+  billing-service:
+    enabled: true
+    replicas: 2
+    port: 8081
+  payment-service:
+    enabled: true
+    replicas: 1
+    port: 8082
+  metric-registry-service:
+    enabled: true
+    replicas: 1
+    port: 8090
+  data-quality-monitor:
+    enabled: true
+    replicas: 1
+    port: 8900
+  rag-service:
+    enabled: true
+    replicas: 1
+    port: 8950
+  etl-runner:
+    enabled: true
+    replicas: 1
+    port: 8700
+
+# 基础设施
+mysql:
+  enabled: true
+  storage: 100Gi
+  rootPassword: __PROD_SECRET__
+
+redis:
+  enabled: true
+  storage: 20Gi
+
+starrocks:
+  enabled: false                # 推荐独立部署或用云上 StarRocks
+  externalUrl: "starrocks-fe.default.svc.cluster.local:9030"
+
+ingress:
+  enabled: true
+  className: nginx
+  host: api.steel-ai.com
+  tls: { secretName: steel-ai-tls }
+
+# 监控
+monitoring:
+  prometheus: { enabled: true }
+  grafana: { enabled: true }
+
+# JWT
+auth:
+  jwtSecret: __PROD_SECRET__
