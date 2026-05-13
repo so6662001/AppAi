@@ -53,6 +53,7 @@ cat <<EOF
   指标注册中心:    http://localhost:5173
   AI 经营早报 H5:  http://localhost:5174
   DSL 编译器 API:  http://localhost:8000/docs
+  报表 CRUD API:   http://localhost:8080/api/v1/scheduled-reports
   报表调度器 API:  http://localhost:8100/health
   StarRocks MySQL: localhost:9030 (root, 无密码)
   StarRocks HTTP:  http://localhost:8030

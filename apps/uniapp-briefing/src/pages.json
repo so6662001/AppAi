@@ -9,7 +9,8 @@
     { "path": "pages/ai-briefing/layout-setting", "style": { "navigationBarTitleText": "早报设置" } },
     { "path": "pages/scheduled-report/list",      "style": { "navigationBarTitleText": "我的定时报表" } },
     { "path": "pages/scheduled-report/templates", "style": { "navigationBarTitleText": "报表模板" } },
-    { "path": "pages/scheduled-report/runs",      "style": { "navigationBarTitleText": "执行历史" } }
+    { "path": "pages/scheduled-report/runs",      "style": { "navigationBarTitleText": "执行历史" } },
+    { "path": "pages/ai/chat",                    "style": { "navigationBarTitleText": "AI 经营助手" } }
   ],
   "globalStyle": {
     "navigationBarBackgroundColor": "#ffffff",

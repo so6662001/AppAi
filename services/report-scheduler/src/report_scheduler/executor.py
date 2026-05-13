@@ -20,6 +20,7 @@ from .db import (
 )
 from .cron import next_run_at
 from .notify import push, NotifyResult
+from .tenant_config import get_config as get_tenant_config
 
 
 log = logging.getLogger("scheduler.executor")
@@ -190,6 +191,7 @@ def _notify_all(report: dict, run_id: int, summary: str, blocks: list) -> list[N
         recipients.append(f"user:{s['subscriber_user_id']}")
 
     seen = set()
+    tenant_id = report["tenant_id"]
     for r in recipients:
         if not r.startswith("user:"):
             continue                # role/department 由通知服务展开, 此处略
@@ -197,11 +199,15 @@ def _notify_all(report: dict, run_id: int, summary: str, blocks: list) -> list[N
         if uid in seen: continue
         seen.add(uid)
         for ch in channels:
+            # 拉租户级渠道配置 (webhook/SMTP/AppID 等)
+            ch_conf = get_tenant_config(tenant_id, ch) if ch != "INAPP" else None
             res = push(ch,
-                       tenant_id=report["tenant_id"], user_id=uid,
+                       tenant_id=tenant_id, user_id=uid,
                        title=report.get("name", "定时报表"),
                        summary=summary, blocks=blocks,
-                       run_id=run_id, report_name=report.get("name", ""))
+                       run_id=run_id, report_name=report.get("name", ""),
+                       conf=ch_conf)
             out.append(res)
-            log.info("push run=%s user=%s ch=%s ok=%s", run_id, uid, ch, res.ok)
+            log.info("push run=%s user=%s ch=%s ok=%s err=%s",
+                     run_id, uid, ch, res.ok, res.error or "")
     return out
