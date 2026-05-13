@@ -1,0 +1,84 @@
+## ============================================================
+## 共享维度定义（按钢铁行业实务建模）
+## ============================================================
+version: 1
+
+dimensions:
+
+  date:
+    table: dim_date
+    key: date_key
+    attrs: [year, quarter, month, week, day, ym, yq, is_workday, fiscal_year, fiscal_period]
+
+  org:
+    table: dim_org
+    key: org_id
+    attrs: [org_code, org_name, parent_id, org_path, org_level, region, branch]
+
+  customer:
+    table: dim_customer_his
+    key: customer_id
+    sk: customer_sk
+    attrs: [customer_code, customer_name, industry, region, level, sales_owner_id, risk_grade]
+    slow_change: type2
+
+  supplier:
+    table: dim_supplier_his
+    key: supplier_id
+    attrs: [supplier_code, supplier_name, region, level]
+    slow_change: type2
+
+  material:
+    table: dim_material_his
+    key: material_id
+    sk: material_sk
+    attrs: [material_code, material_name, product_type, grade_code, spec_thk, spec_wid, spec_len, surface_treat, origin_id, unit, abc_class]
+    slow_change: type2
+
+  grade:
+    table: dim_grade
+    key: grade_code
+    attrs: [grade_name, grade_family, grade_standard, is_alloy, is_stainless, yield_strength, tensile_strength]
+
+  origin:
+    table: dim_origin
+    key: origin_id
+    attrs: [origin_code, origin_name, origin_group, origin_region, origin_country, mill_tier, preferred_premium]
+
+  warehouse:
+    table: dim_warehouse
+    key: warehouse_id
+    attrs: [warehouse_code, warehouse_name, warehouse_type, region, total_area]
+
+  workcenter:
+    table: dim_workcenter
+    key: workcenter_id
+    attrs: [workcenter_code, workcenter_name, process, line_no]
+
+  equipment:
+    table: dim_equipment
+    key: equip_id
+    attrs: [equip_code, equip_name, workcenter_id, equip_type]
+
+  employee:
+    table: dim_employee
+    key: employee_id
+    attrs: [employee_code, employee_name, dept_id, role, manager_id]
+
+  defect_type:
+    table: dim_defect
+    key: defect_id
+    attrs: [defect_code, defect_name, category]
+
+  price_list:
+    table: dim_price_list_daily
+    key: [origin_id, grade_code, spec_thk, spec_wid, product_type, price_date]
+    attrs: [listed_price, cost_basis, index_price, premium]
+
+  hedge_contract:
+    values: [RB螺纹, HC热卷, I铁矿, J焦炭, JM焦煤, SS不锈钢]
+
+  steel_index:
+    table: dim_steel_index
+    key: [grade_code, product_type, region, price_date]
+    attrs: [idx_price]

@@ -1,0 +1,108 @@
+## ============================================================
+## 资金占用 + 客户级周转域指标（8 + 6 = 14 个）
+## domain: CAPITAL
+## 全部敏感指标, 计费默认 1.5x
+## ============================================================
+domain: CAPITAL
+version: 1
+extends: [_common.yaml, _dimensions.yaml]
+
+metrics:
+
+  # ========== 资金占用模型（M133~M140） ==========
+  - { name: customer_capital_occupation, label: 客户级资金占用, code: M133,
+      synonyms: [客户占资金, 占款],
+      fact: dws_customer_capital_daily,
+      formula: SUM(capital_occupation),
+      semantics: snapshot, time_agg: avg, format: amount,
+      sensitivity: HIGH, bizToken_multiplier: 1.5,
+      applicable: [TRADE, PROCESS, MILL] }
+
+  - { name: customer_capital_days, label: 客户资金占用天数, code: M134,
+      synonyms: [现金循环周期, CCC],
+      requires_metrics: [customer_dso, customer_inv_days, customer_dpo_offset]
+      formula: "customer_dso + customer_inv_days - customer_dpo_offset"
+      format: days }
+
+  - { name: customer_dso, label: 客户DSO, code: M135,
+      synonyms: [客户应收周转天数],
+      fact: dws_customer_capital_daily, requires_metrics: [sales_amount],
+      formula: "AVG(ar_amount)*days_in_period / NULLIF(sales_amount,0)",
+      format: days }
+
+  - { name: customer_inv_days, label: 客户库存占用天数, code: M136,
+      synonyms: [客户挂账天数],
+      fact: dws_customer_capital_daily, requires_metrics: [sales_amount],
+      formula: "AVG(pinned_inv_amount)*days_in_period / NULLIF(sales_amount,0)",
+      format: days }
+
+  - { name: customer_dpo_offset, label: 客户DPO抵扣, code: M136A,
+      fact: dws_customer_capital_daily, requires_metrics: [purchase_amount],
+      formula: "AVG(upstream_ap_offset)*days_in_period / NULLIF(purchase_amount,0)",
+      format: days }
+
+  - { name: customer_capital_cost, label: 客户应计资金成本, code: M137,
+      synonyms: [客户资金利息],
+      fact: dws_customer_capital_daily,
+      formula: "SUM(capital_occupation * funding_rate / 365)",
+      format: amount,
+      sensitivity: HIGH,
+      note: "按日累计 = 当日占用 × 资金成本率/365" }
+
+  - { name: customer_contribution_margin, label: 客户贡献毛利, code: M138,
+      requires_metrics: [contribution_margin],
+      formula: "contribution_margin",
+      sliced_by: customer_id, format: amount,
+      sensitivity: HIGH }
+
+  - { name: customer_irr, label: 客户IRR, code: M139,
+      synonyms: [客户资金回报率, 客户ROIC],
+      requires_metrics: [customer_contribution_margin, customer_capital_occupation, customer_capital_cost],
+      formula: "(customer_contribution_margin - customer_capital_cost) / NULLIF(AVG(customer_capital_occupation),0) * (365.0 / days_in_period)",
+      format: percent,
+      sensitivity: HIGH, bizToken_multiplier: 1.5,
+      note: "年化: (贡献毛利-资金成本)/平均占用 × 年化系数" }
+
+  - { name: customer_ton_net_profit, label: 客户吨净利, code: M140,
+      requires_metrics: [customer_contribution_margin, customer_capital_cost, sales_tonnage],
+      formula: "(customer_contribution_margin - customer_capital_cost) / NULLIF(sales_tonnage,0)",
+      format: price,
+      sensitivity: HIGH, bizToken_multiplier: 1.5,
+      note: "把资金成本算进去之后的真实吨利" }
+
+  # ========== 客户级周转（M167~M172） ==========
+  - { name: customer_pinned_inv_amount, label: 客户挂账库存金额, code: M167,
+      synonyms: [客户预留库存, 已下单未提货],
+      fact: dws_customer_capital_daily,
+      formula: SUM(pinned_inv_amount),
+      semantics: snapshot, time_agg: avg, format: amount,
+      sensitivity: MEDIUM }
+
+  - { name: customer_pinned_days, label: 客户挂账天数, code: M168,
+      synonyms: [客户库存压货天数],
+      requires_metrics: [customer_pinned_inv_amount, sales_amount],
+      formula: "AVG(customer_pinned_inv_amount)*days_in_period / NULLIF(sales_amount,0)",
+      format: days }
+
+  - { name: customer_inv_turnover_days, label: 客户库存周转天数, code: M169,
+      requires_metrics: [customer_pinned_inv_amount, cogs_amount],
+      formula: "AVG(customer_pinned_inv_amount)*days_in_period / NULLIF(cogs_amount,0)",
+      format: days,
+      note: "客户挂账库存除以该客户对应销售成本" }
+
+  - { name: customer_inv_turnover_ratio, label: 客户库存周转率, code: M170,
+      requires_metrics: [customer_inv_turnover_days],
+      formula: "days_in_period / NULLIF(customer_inv_turnover_days,0)",
+      format: count, unit: 次 }
+
+  - { name: customer_capital_share, label: 客户资金占用份额, code: M171,
+      synonyms: [占款占比],
+      requires_metrics: [customer_capital_occupation],
+      formula: "customer_capital_occupation / NULLIF(SUM(customer_capital_occupation) OVER(),0)",
+      format: percent, semantics: virtual, window: true }
+
+  - { name: customer_gp_per_capital, label: 客户单位资金毛利, code: M172,
+      requires_metrics: [customer_contribution_margin, customer_capital_occupation],
+      formula: "customer_contribution_margin / NULLIF(AVG(customer_capital_occupation),0)",
+      format: percent, sensitivity: HIGH,
+      note: "每 1 元占用资金能产生多少毛利, 与 IRR 等价但不年化" }

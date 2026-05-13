@@ -1,0 +1,85 @@
+## ============================================================
+## AI 经营分析 · 公共配置（时间粒度 / 比较模式 / 显示格式 / 行业枚举）
+## 所有 metrics_*.yaml 依赖此文件
+## ============================================================
+version: 1
+schema_version: "2026-05"
+
+business_lines:
+  - { code: TRADE,   name: 钢铁贸易 }
+  - { code: PROCESS, name: 钢材加工 }
+  - { code: MILL,    name: 钢材生产厂 }
+
+time_grains: [day, week, month, quarter, year, ytd, mtd, qtd, rolling_7d, rolling_30d, rolling_90d]
+compare_modes: [yoy, mom, wow, dod, vs_plan, vs_budget, vs_index]
+
+semantics_kinds:
+  - additive       # 普通累积型，可任意 SUM
+  - snapshot       # 半累积，时点值，跨日只能 AVG/FIRST/LAST
+  - dimension      # 派生维度属性（如 abc_class）
+  - virtual        # 派生指标，依赖其他指标
+
+time_agg_options: [sum, avg, first, last, min, max]
+
+formats:
+  amount:  { unit: 元,     decimals: 2 }
+  ton:     { unit: 吨,     decimals: 3 }
+  qty:     { unit: 件,     decimals: 0 }
+  percent: { unit: '%',    decimals: 2 }
+  days:    { unit: 天,     decimals: 1 }
+  count:   { unit: 个,     decimals: 0 }
+  price:   { unit: 元/吨,  decimals: 2 }
+  score:   { unit: 分,     decimals: 2 }
+  ratio:   { unit: 倍,     decimals: 3 }
+
+steel_product_types:
+  - 螺纹钢
+  - 线材
+  - 盘螺
+  - 热卷
+  - 冷卷
+  - 中厚板
+  - 镀锌板
+  - 彩涂板
+  - 镀铝锌板
+  - 不锈钢板
+  - 型材
+  - 钢管
+  - 开平板
+  - 纵剪带
+  - 定尺剪切件
+
+hedge_contracts: [RB螺纹, HC热卷, I铁矿, J焦炭, JM焦煤, SS不锈钢]
+
+warehouse_types: [自有, 寄售, 保税, 客户仓, 第三方]
+
+processes:
+  MILL:    [高炉, 转炉, 电炉, 连铸, 加热炉, 热轧, 冷轧, 酸洗, 镀锌, 镀铝锌, 彩涂, 退火, 矫平]
+  PROCESS: [剪切, 开平, 纵剪, 酸洗, 切割, 折弯, 焊接, 抛丸]
+
+## DSL 编译器 SQL 加固
+sql_safeguards:
+  default_limit: 1000
+  max_limit:     50000
+  default_timeout_sec: 30
+  max_scan_rows: 100000000
+  required_filters: [tenant_id]
+  allowed_tables_prefix: [dim_, dwd_, dws_, ads_]
+
+## 业务 Token 计费规则（与 metric 的 sensitivity / bizToken_multiplier 配合）
+biz_token_rules:
+  base_per_question: 200
+  input_factor: 1.0
+  output_factor: 2.0
+  query_per_1k_rows: 50
+  cache_hit_discount: 0.1
+  multiplier_by_sensitivity:
+    LOW:    1.0
+    MEDIUM: 1.2
+    HIGH:   1.5
+
+## SLA 默认承诺
+sla_defaults:
+  freshness_minutes: 60
+  availability:      99.5
+  query_p95_ms:      2000

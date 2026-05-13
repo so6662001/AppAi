@@ -1,0 +1,83 @@
+## ============================================================
+## 质量域指标（14 个）
+## domain: QUALITY
+## ============================================================
+domain: QUALITY
+version: 1
+extends: [_common.yaml, _dimensions.yaml]
+
+metrics:
+
+  - { name: ftq, label: 一次合格率, code: M089,
+      synonyms: [首检合格率, FTQ],
+      fact: dws_quality_daily, filter: "source='IPQC'",
+      formula: "SUM(pass_tonnage)/NULLIF(SUM(insp_tonnage),0)",
+      format: percent }
+
+  - { name: dppm, label: 缺陷率PPM, code: M090,
+      synonyms: [百万分缺陷率, PPM],
+      fact: dws_quality_daily,
+      formula: "SUM(defect_qty)*1000000/NULLIF(SUM(total_qty),0)",
+      format: count, unit: PPM }
+
+  - { name: customer_complaint_count, label: 客诉数, code: M091,
+      fact: dws_complaint_daily, formula: SUM(complaint_count),
+      format: count }
+
+  - { name: customer_complaint_rate, label: 客诉率, code: M092,
+      fact: dws_complaint_daily,
+      formula: "SUM(complaint_count)*1000/NULLIF(SUM(delivered_orders),0)",
+      format: count, unit: 件/千单 }
+
+  - { name: complaint_8d_close_rate, label: 8D按期关闭率, code: M093,
+      fact: dws_complaint_daily,
+      formula: "SUM(closed_on_time)/NULLIF(SUM(complaint_count),0)",
+      format: percent }
+
+  - { name: weight_deviation_rate, label: 重量偏差率, code: M094,
+      synonyms: [理重实重偏差],
+      fact: dws_quality_daily,
+      formula: "AVG(ABS(actual_weight-theoretical_weight)/NULLIF(theoretical_weight,0))",
+      format: percent, applicable: [PROCESS, MILL] }
+
+  - { name: dimension_deviation_rate, label: 尺寸偏差率, code: M095,
+      fact: dws_quality_daily,
+      formula: "SUM(dim_oos_tonnage)/NULLIF(SUM(insp_tonnage),0)",
+      format: percent, applicable: [PROCESS, MILL] }
+
+  - { name: surface_defect_rate, label: 表面缺陷率, code: M096,
+      synonyms: [麻点, 划伤, 氧化色, 锌花不均],
+      fact: dws_quality_daily, filter: "category='SURFACE'",
+      formula: "SUM(defect_tonnage)/NULLIF(SUM(insp_tonnage),0)",
+      format: percent, applicable: [MILL] }
+
+  - { name: mechanical_pass_rate, label: 力学性能合格率, code: M097,
+      synonyms: [屈服强度, 抗拉强度, 延伸率],
+      fact: dws_quality_daily, filter: "category='MECH'",
+      formula: "SUM(pass_count)/NULLIF(SUM(test_count),0)",
+      format: percent, applicable: [MILL] }
+
+  - { name: chemical_pass_rate, label: 化学成分合格率, code: M098,
+      fact: dws_quality_daily, filter: "category='CHEM'",
+      formula: "SUM(pass_count)/NULLIF(SUM(test_count),0)",
+      format: percent, applicable: [MILL] }
+
+  - { name: coil_downgrade_rate, label: 钢卷降级率, code: M099,
+      synonyms: [改判率, 降级判定],
+      fact: dws_quality_daily,
+      formula: "SUM(downgrade_tonnage)/NULLIF(SUM(insp_tonnage),0)",
+      format: percent, applicable: [MILL, PROCESS] }
+
+  - { name: defect_top_categories, label: Top缺陷类型, code: M100,
+      fact: dwd_quality_inspection,
+      formula: "topn(defect_tonnage, defect_id, 5)",
+      format: ton, semantics: virtual }
+
+  - { name: rework_cost_amount, label: 返工成本, code: M100A,
+      fact: dws_quality_daily, formula: SUM(rework_cost), format: amount,
+      sensitivity: HIGH }
+
+  - { name: cost_of_poor_quality, label: 质量成本COPQ, code: M100B,
+      fact: dws_quality_daily,
+      formula: "SUM(scrap_cost+rework_cost+complaint_cost)",
+      format: amount, sensitivity: HIGH }

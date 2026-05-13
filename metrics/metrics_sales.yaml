@@ -1,0 +1,430 @@
+## ============================================================
+## 销售域指标（25 基础 + 6 挂价 + 6 其他收入 + 6 其他支出 + 4 净利 = 47 个）
+## domain: SALES
+## ============================================================
+domain: SALES
+version: 1
+extends: [_common.yaml, _dimensions.yaml]
+
+metrics:
+
+  # ========== 基础销售（编号 1~25） ==========
+  - name: sales_amount
+    label: 销售额
+    code: M001
+    synonyms: [营收, 销售收入, 产值]
+    fact: dws_sales_daily
+    formula: SUM(order_amount)
+    format: amount
+    semantics: additive
+    applicable: [TRADE, PROCESS, MILL]
+    owner: 销售总监
+    sensitivity: MEDIUM
+
+  - name: sales_tonnage
+    label: 销售吨数
+    code: M002
+    synonyms: [销量, 卖了多少吨]
+    fact: dws_sales_daily
+    formula: SUM(order_tonnage)
+    format: ton
+    semantics: additive
+    applicable: [TRADE, PROCESS, MILL]
+
+  - name: sales_qty
+    label: 销售件数
+    code: M003
+    fact: dws_sales_daily
+    formula: SUM(order_qty)
+    format: qty
+    applicable: [PROCESS]
+
+  - name: avg_unit_price
+    label: 平均吨价
+    code: M004
+    alias: actual_avg_price
+    synonyms: [出货均价, 销售单价, 成交均价]
+    fact: dws_sales_daily
+    formula: SUM(order_amount)/NULLIF(SUM(order_tonnage),0)
+    format: price
+    note: "实际成交均价; 看挂价请用 listed_price"
+
+  - name: price_premium_vs_index
+    label: 销售吨价对指数差
+    code: M005
+    synonyms: [溢价, 对Mysteel价差]
+    fact: dws_sales_daily
+    join: [dim_steel_index]
+    formula: "AVG(order_amount/NULLIF(order_tonnage,0)) - AVG(idx_price)"
+    format: price
+    applicable: [TRADE, MILL]
+
+  - name: gross_profit
+    label: 销售毛利
+    code: M006
+    alias: actual_gross_profit
+    synonyms: [毛利, 实际毛利, 成交毛利]
+    fact: dws_sales_daily
+    formula: SUM(gross_profit)
+    format: amount
+    sensitivity: HIGH
+    note: "实际成交金额 - 移动加权成本; 不含其他收入/支出"
+
+  - name: gross_margin
+    label: 毛利率
+    code: M007
+    fact: dws_sales_daily
+    formula: SUM(gross_profit)/NULLIF(SUM(order_amount),0)
+    format: percent
+    sensitivity: HIGH
+
+  - name: ton_gross_profit
+    label: 吨毛利
+    code: M008
+    alias: actual_ton_gross_profit
+    synonyms: [实际吨毛利, 单吨毛利]
+    fact: dws_sales_daily
+    formula: SUM(gross_profit)/NULLIF(SUM(order_tonnage),0)
+    format: price
+    sensitivity: HIGH
+
+  - name: order_count
+    label: 订单数
+    code: M009
+    fact: dws_sales_daily
+    formula: SUM(order_count)
+    format: count
+
+  - name: avg_order_tonnage
+    label: 单单吨数
+    code: M010
+    fact: dws_sales_daily
+    formula: SUM(order_tonnage)/NULLIF(SUM(order_count),0)
+    format: ton
+
+  - name: new_customer_count
+    label: 新客户数
+    code: M011
+    fact: dws_customer_daily
+    formula: SUM(CASE WHEN first_order_date=biz_date THEN 1 ELSE 0 END)
+    format: count
+
+  - name: active_customer_count
+    label: 活跃客户数
+    code: M012
+    fact: dws_customer_daily
+    formula: COUNT(DISTINCT CASE WHEN order_amount>0 THEN customer_id END)
+    format: count
+
+  - name: customer_repeat_rate
+    label: 客户复购率
+    code: M013
+    fact: dws_customer_monthly
+    formula: SUM(repeat_customers)/NULLIF(SUM(total_customers),0)
+    format: percent
+
+  - name: customer_concentration_top10
+    label: Top10客户占比
+    code: M014
+    fact: dws_sales_daily
+    formula: "topn_ratio(order_amount, customer_id, 10)"
+    format: percent
+    semantics: virtual
+
+  - name: spec_concentration_top10
+    label: Top10规格占比
+    code: M015
+    fact: dws_sales_daily
+    formula: "topn_ratio(order_tonnage, material_id, 10)"
+    format: percent
+    semantics: virtual
+
+  - name: delivery_tonnage
+    label: 发货吨数
+    code: M016
+    fact: dws_sales_daily
+    formula: SUM(delivered_tonnage)
+    format: ton
+
+  - name: delivery_value
+    label: 发货金额
+    code: M017
+    fact: dws_sales_daily
+    formula: SUM(delivered_amount)
+    format: amount
+
+  - name: on_time_delivery_rate
+    label: 达交率
+    code: M018
+    synonyms: [准交率, OTD, 准时交付率]
+    fact: dws_sales_daily
+    formula: SUM(on_time_tonnage)/NULLIF(SUM(promise_tonnage),0)
+    format: percent
+
+  - name: order_to_delivery_days
+    label: 订单到发货天数
+    code: M019
+    fact: dws_sales_daily
+    formula: AVG(deliver_lead_days)
+    format: days
+
+  - name: cancel_rate
+    label: 订单取消率
+    code: M020
+    fact: dws_sales_daily
+    formula: SUM(cancel_tonnage)/NULLIF(SUM(order_tonnage),0)
+    format: percent
+
+  - name: return_rate
+    label: 退货率
+    code: M021
+    fact: dws_sales_daily
+    formula: SUM(return_tonnage)/NULLIF(SUM(delivered_tonnage),0)
+    format: percent
+
+  - name: ar_outstanding
+    label: 应收账款余额
+    code: M022
+    fact: dws_ar_snapshot
+    formula: SUM(ar_amount)
+    semantics: snapshot
+    time_agg: last
+    format: amount
+
+  - name: ar_overdue_amount
+    label: 逾期应收
+    code: M023
+    fact: dws_ar_snapshot
+    formula: SUM(overdue_amount)
+    semantics: snapshot
+    time_agg: last
+    format: amount
+
+  - name: dso
+    label: 应收周转天数
+    code: M024
+    synonyms: [DSO, 回款天数]
+    fact: dws_ar_snapshot
+    formula: "AVG(ar_amount)*days_in_period/NULLIF(SUM(order_amount),0)"
+    requires_metrics: [sales_amount]
+    format: days
+
+  - name: point_pricing_open_qty
+    label: 点价未结量
+    code: M025
+    synonyms: [未点价头寸, 期现敞口]
+    fact: dws_pricing_open
+    formula: SUM(open_tonnage)
+    semantics: snapshot
+    time_agg: last
+    format: ton
+    applicable: [TRADE]
+
+  # ========== 挂价系列（编号 101~106） ==========
+  - name: listed_price
+    label: 挂牌价
+    code: M101
+    synonyms: [挂价, 牌价, 报价]
+    fact: dim_price_list_daily
+    formula: AVG(listed_price)
+    grain: [price_date, origin_id, grade_code, spec_thk, product_type]
+    format: price
+
+  - name: listed_gross_profit
+    label: 挂价毛利
+    code: M102
+    synonyms: [理论毛利, 牌价毛利, 挂价利润]
+    fact: dws_sales_daily
+    join: [dim_price_list_daily]
+    formula: "SUM((listed_price_snapshot - cost_price)*order_tonnage)"
+    format: amount
+    sensitivity: HIGH
+    applicable: [TRADE, MILL]
+
+  - name: listed_gross_margin
+    label: 挂价毛利率
+    code: M103
+    fact: dws_sales_daily
+    join: [dim_price_list_daily]
+    formula: "SUM((listed_price_snapshot - cost_price)*order_tonnage)/NULLIF(SUM(listed_price_snapshot*order_tonnage),0)"
+    format: percent
+    sensitivity: HIGH
+
+  - name: ton_listed_gross_profit
+    label: 挂价吨毛利
+    code: M104
+    synonyms: [挂价吨利, 牌价吨毛利]
+    fact: dws_sales_daily
+    join: [dim_price_list_daily]
+    formula: "SUM((listed_price_snapshot - cost_price)*order_tonnage)/NULLIF(SUM(order_tonnage),0)"
+    format: price
+    sensitivity: HIGH
+
+  - name: price_realization_rate
+    label: 挂价实现率
+    code: M105
+    synonyms: [成交价折扣率]
+    fact: dws_sales_daily
+    join: [dim_price_list_daily]
+    formula: "SUM(order_amount)/NULLIF(SUM(listed_price_snapshot*order_tonnage),0)"
+    format: percent
+
+  - name: listed_vs_actual_gap
+    label: 挂价让利
+    code: M106
+    synonyms: [让利空间, 挂实价差]
+    fact: dws_sales_daily
+    join: [dim_price_list_daily]
+    formula: "SUM((listed_price_snapshot - order_amount/NULLIF(order_tonnage,0))*order_tonnage)"
+    format: amount
+
+  # ========== 销售其他收入（编号 107~112） ==========
+  - name: other_income_amount
+    label: 销售其他收入
+    code: M107
+    synonyms: [其他业务收入, 营业外收入]
+    fact: dws_sales_extra_pnl_daily
+    filter: "direction='INCOME'"
+    formula: SUM(amount)
+    format: amount
+
+  - name: processing_fee_income
+    label: 加工费收入
+    code: M108
+    fact: dws_sales_extra_pnl_daily
+    filter: "pnl_category='PROCESSING_FEE'"
+    formula: SUM(amount)
+    format: amount
+    applicable: [TRADE, PROCESS]
+
+  - name: delivery_fee_income
+    label: 配送费收入
+    code: M109
+    fact: dws_sales_extra_pnl_daily
+    filter: "pnl_category='DELIVERY_FEE'"
+    formula: SUM(amount)
+    format: amount
+
+  - name: storage_fee_income
+    label: 仓储费收入
+    code: M110
+    fact: dws_sales_extra_pnl_daily
+    filter: "pnl_category='STORAGE_FEE'"
+    formula: SUM(amount)
+    format: amount
+    applicable: [TRADE]
+
+  - name: financing_interest_income
+    label: 财务贴息收入
+    code: M111
+    synonyms: [资金贴息, 利息收入]
+    fact: dws_sales_extra_pnl_daily
+    filter: "pnl_category='FINANCING_INTEREST'"
+    formula: SUM(amount)
+    format: amount
+    applicable: [TRADE]
+
+  - name: hedge_realized_pnl
+    label: 套保已实现盈亏
+    code: M112
+    synonyms: [期货平仓盈亏]
+    fact: dws_sales_extra_pnl_daily
+    filter: "pnl_category='HEDGE_REALIZED'"
+    formula: SUM(amount)
+    format: amount
+    applicable: [TRADE, MILL]
+
+  # ========== 销售其他支出（编号 113~118） ==========
+  - name: other_expense_amount
+    label: 销售其他支出
+    code: M113
+    synonyms: [其他业务成本, 杂项支出]
+    fact: dws_sales_extra_pnl_daily
+    filter: "direction='EXPENSE'"
+    formula: SUM(amount)
+    format: amount
+
+  - name: delivery_fee_expense
+    label: 配送费支出
+    code: M114
+    fact: dws_sales_extra_pnl_daily
+    filter: "pnl_category='DELIVERY_EXP'"
+    formula: SUM(amount)
+    format: amount
+
+  - name: storage_fee_expense
+    label: 仓储费支出
+    code: M115
+    fact: dws_sales_extra_pnl_daily
+    filter: "pnl_category='STORAGE_EXP'"
+    formula: SUM(amount)
+    format: amount
+
+  - name: capital_cost_expense
+    label: 资金占用利息
+    code: M116
+    synonyms: [资金成本, 财务费用占用]
+    fact: dws_sales_extra_pnl_daily
+    filter: "pnl_category='CAPITAL_COST'"
+    formula: SUM(amount)
+    format: amount
+    applicable: [TRADE, MILL]
+
+  - name: intermediary_fee_expense
+    label: 居间费佣金
+    code: M117
+    synonyms: [返点, 介绍费, 佣金]
+    fact: dws_sales_extra_pnl_daily
+    filter: "pnl_category='INTERMEDIARY_EXP'"
+    formula: SUM(amount)
+    format: amount
+    applicable: [TRADE]
+
+  - name: claim_compensation_expense
+    label: 客户索赔支出
+    code: M118
+    synonyms: [赔偿, 索赔]
+    fact: dws_sales_extra_pnl_daily
+    filter: "pnl_category='CLAIM_COMPENSATION'"
+    formula: SUM(amount)
+    format: amount
+
+  # ========== 净利润系列（编号 119~122） ==========
+  - name: contribution_margin
+    label: 贡献毛利
+    code: M119
+    synonyms: [直接经营毛利, 变动毛利]
+    requires_metrics: [gross_profit, other_income_amount, other_expense_amount]
+    formula: "gross_profit + other_income_amount - other_expense_amount"
+    format: amount
+    sensitivity: HIGH
+    note: "直接归集型, 不含期间费用分摊; 业务员/客户/订单维度都可信"
+
+  - name: net_profit
+    label: 销售净利润
+    code: M120
+    synonyms: [净利, 净利润, 净赚]
+    requires_metrics: [contribution_margin]
+    join: [dws_period_expense_monthly]
+    formula: "contribution_margin - allocated_period_expense"
+    format: amount
+    sensitivity: HIGH
+    bizToken_multiplier: 1.5
+    note: "= 贡献毛利 - 期间费用分摊; 日粒度按比例摊, 月以上可信"
+
+  - name: net_margin
+    label: 净利率
+    code: M121
+    requires_metrics: [net_profit, sales_amount]
+    formula: "net_profit / NULLIF(sales_amount, 0)"
+    format: percent
+    sensitivity: HIGH
+
+  - name: ton_net_profit
+    label: 吨净利
+    code: M122
+    synonyms: [吨净利润, 单吨净利]
+    requires_metrics: [net_profit, sales_tonnage]
+    formula: "net_profit / NULLIF(sales_tonnage, 0)"
+    format: price
+    sensitivity: HIGH
