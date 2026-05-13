@@ -14,6 +14,7 @@ from .registry_client import load_synonyms
 from .renderer import render
 from .llm import LLMClient
 from . import session as session_db
+from . import billing_client
 
 
 log = logging.getLogger("chat.orchestrator")
@@ -38,6 +39,9 @@ async def stream(text: str, tenant_id: int, user_id: int, business_line: str = "
     session_db.ensure_session(session_id, tenant_id, user_id, business_line=business_line,
                               title=text[:30] if text else None)
     user_msg_id = session_db.save_user_message(session_id, tenant_id, user_id, text)
+
+    # 预扣费 (失败也继续, 由 sweeper 兜底)
+    reservation_id = billing_client.preauth(tenant_id, user_id, session_id, msg_id, estimate=500)
 
     # 1. 意图 + 槽位
     yield {"event": "status", "data": {"phase": "parsing"}}
@@ -127,6 +131,14 @@ async def stream(text: str, tenant_id: int, user_id: int, business_line: str = "
         model_name=(settings.llm_model or settings.llm_provider),
         parent_message_id=user_msg_id,
     )
+
+    # 实际计费结算
+    billing_client.settle(tenant_id, reservation_id,
+                          actual=usage["bizTokensCharged"],
+                          model_name=settings.llm_model or settings.llm_provider,
+                          input_tokens=usage["inputTokens"],
+                          output_tokens=usage["outputTokens"],
+                          query_rows=usage["queryRows"], cache_hit=False)
 
     yield {"event": "done", "data": {"messageId": msg_id, "sessionId": session_id}}
 
