@@ -6,7 +6,10 @@
         "navigationBarBackgroundColor": "#f5f7fa"
     } },
     { "path": "pages/ai-briefing/history",        "style": { "navigationBarTitleText": "历史早报" } },
-    { "path": "pages/ai-briefing/layout-setting", "style": { "navigationBarTitleText": "早报设置" } }
+    { "path": "pages/ai-briefing/layout-setting", "style": { "navigationBarTitleText": "早报设置" } },
+    { "path": "pages/scheduled-report/list",      "style": { "navigationBarTitleText": "我的定时报表" } },
+    { "path": "pages/scheduled-report/templates", "style": { "navigationBarTitleText": "报表模板" } },
+    { "path": "pages/scheduled-report/runs",      "style": { "navigationBarTitleText": "执行历史" } }
   ],
   "globalStyle": {
     "navigationBarBackgroundColor": "#ffffff",

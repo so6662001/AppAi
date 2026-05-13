@@ -8,6 +8,7 @@ const routes = [
   { path: '/metrics/new', component: () => import('./pages/MetricEditor.vue') },
   { path: '/requests', component: () => import('./pages/ChangeRequests.vue') },
   { path: '/requests/:id', component: () => import('./pages/ChangeRequestDetail.vue'), props: true },
+  { path: '/scheduled-reports', component: () => import('./pages/ScheduledReports.vue') },
   { path: '/quality', component: () => import('./pages/QualityBoard.vue') },
   { path: '/lineage', component: () => import('./pages/Lineage.vue') },
   { path: '/subscriptions', component: () => import('./pages/Subscriptions.vue') },

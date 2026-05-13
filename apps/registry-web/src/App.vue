@@ -16,6 +16,7 @@ const route = useRoute();
         <el-menu-item index="/"><el-icon><Document /></el-icon><span>首页</span></el-menu-item>
         <el-menu-item index="/metrics"><el-icon><IList /></el-icon><span>指标列表</span></el-menu-item>
         <el-menu-item index="/requests"><el-icon><EditPen /></el-icon><span>变更申请</span></el-menu-item>
+        <el-menu-item index="/scheduled-reports"><el-icon><DataAnalysis /></el-icon><span>定时报表</span></el-menu-item>
         <el-menu-item index="/quality"><el-icon><DataAnalysis /></el-icon><span>数据质量</span></el-menu-item>
         <el-menu-item index="/lineage"><el-icon><Connection /></el-icon><span>血缘图谱</span></el-menu-item>
         <el-menu-item index="/subscriptions"><el-icon><Histogram /></el-icon><span>我的订阅</span></el-menu-item>

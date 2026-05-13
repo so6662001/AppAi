@@ -46,6 +46,7 @@ services:
       - ./ddl/08_billing.sql:/docker-entrypoint-initdb.d/08_billing.sql:ro
       - ./ddl/09_chat_session.sql:/docker-entrypoint-initdb.d/09_chat_session.sql:ro
       - ./ddl/11_briefing.sql:/docker-entrypoint-initdb.d/11_briefing.sql:ro
+      - ./ddl/12_scheduled_reports.sql:/docker-entrypoint-initdb.d/12_scheduled_reports.sql:ro
     restart: unless-stopped
 
   redis:
@@ -60,6 +61,25 @@ services:
       retries: 20
     volumes:
       - redis_data:/data
+    restart: unless-stopped
+
+  # ----------------------- 报表调度器 -----------------------
+  report-scheduler:
+    build:
+      context: ./services/report-scheduler
+    container_name: steel-report-scheduler
+    ports:
+      - "8100:8100"
+    environment:
+      - DB_URL=mysql+pymysql://root:steeldev@mysql:3306/steel_chat?charset=utf8mb4
+      - DSL_COMPILER_URL=http://dsl-compiler:8000
+      - SR_JDBC_URL=jdbc:mysql://starrocks:9030/steel_dw
+      - SR_USER=root
+      - SR_PASS=
+      - TZ=Asia/Shanghai
+    depends_on:
+      mysql: { condition: service_healthy }
+      starrocks: { condition: service_healthy }
     restart: unless-stopped
 
   # ----------------------- DSL 编译器 -----------------------
