@@ -23,18 +23,37 @@ spring:
         - id: briefing
           uri: ${BRIEFING_URL:http://briefing-service:8500}
           predicates: [Path=/v1/briefing/**]
-        - id: report
+        # 报表 CRUD 走 Java report-service (8080) - 注意不是 Python scheduler
+        - id: report-crud
+          uri: ${REPORT_URL:http://report-service:8080}
+          predicates: [Path=/api/v1/scheduled-reports/**,/api/v1/notify-configs/**]
+        # 兼容旧前缀 /v1/scheduled-reports (uniapp 在用)
+        - id: report-crud-legacy
           uri: ${REPORT_URL:http://report-service:8080}
           predicates: [Path=/v1/scheduled-reports/**,/v1/notify-configs/**]
+          filters:
+            - RewritePath=/v1/(?<seg>.*), /api/v1/$\{seg}
+        # 报表调度器 (Python) 仅暴露内部触发接口, 通过 gateway 不暴露给外部
+        - id: report-scheduler-internal
+          uri: ${SCHEDULER_URL:http://report-scheduler:8100}
+          predicates: [Path=/internal/scheduler/**]
+          filters:
+            - RewritePath=/internal/scheduler/(?<seg>.*), /internal/$\{seg}
         - id: billing
           uri: ${BILLING_URL:http://billing-service:8081}
-          predicates: [Path=/v1/billing/**]
+          predicates: [Path=/v1/billing/**,/api/v1/billing/**]
         - id: payment
           uri: ${PAYMENT_URL:http://payment-service:8082}
-          predicates: [Path=/v1/payment/**]
+          predicates: [Path=/v1/payment/**,/api/v1/payment/**]
         - id: registry
           uri: ${REGISTRY_URL:http://metric-registry-service:8090}
           predicates: [Path=/api/registry/**]
+        - id: query-engine
+          uri: ${QUERY_ENGINE_URL:http://query-engine:8800}
+          predicates: [Path=/v1/query/**]
+        - id: forecast
+          uri: ${FORECAST_URL:http://forecast-service:8400}
+          predicates: [Path=/v1/forecast/**]
 
 auth:
   jwt-secret: ${JWT_SECRET:change-me-to-a-strong-secret-at-least-32-bytes-long}

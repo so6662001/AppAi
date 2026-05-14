@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from .config import settings
 from .orchestrator import stream
 from . import session as session_db
+from . import billing_client
 
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"),
@@ -32,6 +33,15 @@ try:
     obs_setup(app, service_name="chat-orchestrator")
 except Exception:
     pass
+
+
+@app.on_event("startup")
+def _start_workers():
+    """启动 billing outbox 重试 worker."""
+    try:
+        billing_client.start_outbox_worker(interval=30)
+    except Exception:
+        log.exception("billing outbox worker failed to start")
 
 
 class ChatMessageReq(BaseModel):

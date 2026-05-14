@@ -18,6 +18,13 @@ log = logging.getLogger("rag")
 app = FastAPI(title="RAG Service", version="0.1.0")
 _store = VectorStore()
 
+WORKERS = int(os.environ.get("WEB_CONCURRENCY", os.environ.get("UVICORN_WORKERS", 1)))
+if WORKERS > 1:
+    log.warning("⚠️  RAG store is in-memory; running with %s workers means each "
+                "worker has an independent copy (potentially inconsistent search "
+                "results across requests). Recommend: use Milvus/pgvector + "
+                "EMBED_PROVIDER=bge-m3 for production. Or set workers=1.", WORKERS)
+
 
 @app.on_event("startup")
 def on_start():
@@ -27,10 +34,13 @@ def on_start():
     for f in sorted(metrics_dir.glob("metrics_*.yaml")):
         try:
             data = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
-        except Exception:
+        except Exception as e:
+            log.warning("skip yaml %s: %s", f.name, e)
             continue
         for m in data.get("metrics", []) or []:
+            if not isinstance(m, dict): continue
             name = m.get("name", "")
+            if not name: continue
             label = m.get("label", "")
             note = m.get("note") or m.get("notes") or ""
             syns = " ".join(m.get("synonyms") or [])
@@ -40,7 +50,7 @@ def on_start():
                 "code": m.get("code"), "synonyms": m.get("synonyms") or [],
             })
             count += 1
-    log.info("loaded %s metric docs into RAG store", count)
+    log.info("loaded %s metric docs into RAG store (worker pid=%s)", count, os.getpid())
 
 
 @app.get("/health")

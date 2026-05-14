@@ -90,8 +90,16 @@ async def stream(text: str, tenant_id: int, user_id: int, business_line: str = "
 
     yield {"event": "status", "data": {"phase": "querying", "tables": compiled.get("tables_used")}}
 
-    # 4. 执行 SQL (简化: 直接用 pymysql, 失败时返回演示数据)
-    rows = _execute_sql(compiled["sql"], compiled.get("params") or {})
+    # 4. 执行 SQL (优先 query-engine, 失败 fallback 直连, 再失败明确告知用户)
+    rows, exec_meta = _execute_sql_safe(compiled.get("sql") or "",
+                                         compiled.get("params") or {},
+                                         tenant_id, user_id, text)
+    if exec_meta.get("degraded") and exec_meta.get("mode") == "demo":
+        # 给用户明确告知降级 - 不静默欺骗用户
+        yield {"event": "warning", "data": {
+            "code": "W_DATA_UNAVAILABLE",
+            "message": "数据源不可用, 当前展示的是演示数据, 仅供 UI 体验",
+        }}
 
     # 5. 渲染 blocks
     blocks, base_summary = render(rows, dsl)
@@ -143,14 +151,39 @@ async def stream(text: str, tenant_id: int, user_id: int, business_line: str = "
     yield {"event": "done", "data": {"messageId": msg_id, "sessionId": session_id}}
 
 
-def _execute_sql(sql: str, params: dict) -> list[dict]:
-    """执行 SQL, 失败时返回 mock 数据避免阻塞 demo."""
+def _execute_sql_safe(sql: str, params: dict, tenant_id: int, user_id: int,
+                      question: str) -> tuple[list[dict], dict]:
+    """三层降级:
+       1) 调 query-engine (带 L1/L2 缓存 + 审计 + 行限制)
+       2) 直连 StarRocks (pymysql) - 已不推荐
+       3) 真不可达时返回 demo, **并返回 degraded=True 让上层告知用户**
+    """
+    # 1) query-engine
+    if not sql:
+        return [], {"mode": "no_sql"}
+    try:
+        r = httpx.post(f"{settings.query_engine_url}/v1/query/execute", json={
+            "sql": sql, "params": params, "question": question, "row_limit": 5000,
+        }, headers={
+            "X-Tenant-Id": str(tenant_id), "X-User-Id": str(user_id),
+        }, timeout=15)
+        if r.status_code == 200:
+            d = r.json()
+            return d.get("rows", []), {
+                "mode": "query-engine",
+                "cache_hit": d.get("cache_hit", False),
+                "exec_ms": d.get("exec_ms", 0),
+            }
+        log.warning("query-engine %s: %s", r.status_code, r.text[:200])
+    except Exception as e:
+        log.warning("query-engine unreachable: %s", e)
+
+    # 2) 直连 (兼容旧路径)
     try:
         import pymysql
         jdbc = settings.sr_jdbc_url.replace("jdbc:mysql://", "")
         hp, db = jdbc.split("/", 1)
         host, port = hp.split(":")
-        # 把 :p1 → %(p1)s
         safe = sql
         for k in params: safe = safe.replace(f":{k}", f"%({k})s")
         conn = pymysql.connect(host=host, port=int(port), user=settings.sr_user,
@@ -159,12 +192,20 @@ def _execute_sql(sql: str, params: dict) -> list[dict]:
         try:
             with conn.cursor() as cur:
                 cur.execute(safe, params)
-                return list(cur.fetchall())
+                return list(cur.fetchall()), {"mode": "direct"}
         finally:
             conn.close()
     except Exception as e:
-        log.warning("SQL execute fallback to demo: %s", e)
-        return _demo_rows()
+        log.warning("direct SQL also failed, returning demo: %s", e)
+
+    # 3) demo 兜底 (degraded=True 让 caller 告知用户)
+    return _demo_rows(), {"mode": "demo", "degraded": True}
+
+
+# 旧名保留(报错时给 schedule executor 留接口)
+def _execute_sql(sql: str, params: dict) -> list[dict]:
+    rows, _meta = _execute_sql_safe(sql, params, 0, 0, "")
+    return rows
 
 
 def _demo_rows() -> list[dict]:

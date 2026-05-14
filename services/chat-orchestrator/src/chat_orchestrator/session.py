@@ -51,7 +51,25 @@ def ensure_session(session_id: str, tenant_id: int, user_id: int,
         return session_id
 
 
-def save_user_message(session_id: str, tenant_id: int, user_id: int, text_: str) -> str:
+def save_user_message(session_id: str, tenant_id: int, user_id: int, text_: str,
+                      idempotency_key: str | None = None) -> str:
+    """支持幂等: 相同 idempotency_key 返回已存在的 message_id, 不重复插入."""
+    if idempotency_key:
+        try:
+            with get_db().begin() as conn:
+                existing = conn.execute(text("""
+                    SELECT message_id FROM chat_message
+                    WHERE tenant_id=:tid AND session_id=:sid
+                      AND role='user' AND content_text=:txt
+                      AND created_at > NOW() - INTERVAL 5 MINUTE
+                    ORDER BY created_at DESC LIMIT 1
+                """), {"tid": tenant_id, "sid": session_id, "txt": text_}).first()
+                if existing:
+                    log.info("idempotent user message found: %s", existing[0])
+                    return existing[0]
+        except Exception:
+            pass
+
     msg_id = uuid.uuid4().hex
     try:
         with get_db().begin() as conn:

@@ -101,22 +101,25 @@ def _exec_via_chat(report: dict, tenant_id: int, user_id: int):
         }, timeout=30)
         r.raise_for_status()
         events = r.json().get("events", [])
-        blocks = []
-        summary_parts = []
+        blocks: list = []
+        summary_parts: list[str] = []
         sql_text = ""
-        rows = []
+        rows_count = 0       # 改成 count, 避免与底层 rows 混淆
         biz_tokens = 0
         for ev in events:
-            t = ev["event"]; d = ev["data"]
+            t = ev.get("event"); d = ev.get("data")
             if t == "data":
                 blocks.append(d)
             elif t == "token":
-                summary_parts.append(d if isinstance(d, str) else json.dumps(d))
+                summary_parts.append(d if isinstance(d, str) else json.dumps(d, default=str))
             elif t == "usage":
-                biz_tokens = (d if isinstance(d, dict) else {}).get("bizTokensCharged", 0) or 0
-            elif t == "status" and isinstance(d, dict) and "dsl" in d:
-                pass
-        return blocks, "".join(summary_parts), sql_text, rows, biz_tokens
+                if isinstance(d, dict):
+                    biz_tokens = int(d.get("bizTokensCharged") or 0)
+                    rows_count = int(d.get("queryRows") or 0)
+            # status / done / drilldown_suggestion 不处理
+        # rows_count 用占位 list 表示 "有/无", 不传具体行
+        rows_marker = [{"_chat_path": True}] * min(rows_count, 1)
+        return blocks, "".join(summary_parts), sql_text, rows_marker, biz_tokens
     except Exception as e:
         log.warning("chat orchestrator call failed: %s", e)
         return None

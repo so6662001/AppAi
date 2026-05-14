@@ -78,21 +78,60 @@ def evaluate_when(expr: str, ctx: dict) -> bool:
         return False
 
 
+DSL_COMPILER_URL = os.environ.get("DSL_COMPILER_URL", "http://localhost:8000")
+QUERY_ENGINE_URL = os.environ.get("QUERY_ENGINE_URL", "http://localhost:8800")
+
+
+def _fetch_metric_value(tenant_id: int, metric_name: str,
+                        preset: str = "yesterday") -> float | None:
+    """编译并执行单指标查询, 返回值. 失败返回 None."""
+    try:
+        import httpx
+        r = httpx.post(f"{DSL_COMPILER_URL}/v1/dsl/compile", json={
+            "dsl": {"metrics": [metric_name], "time": {"preset": preset, "grain": "day"}, "limit": 1},
+            "context": {"tenant_id": tenant_id, "user_id": 0, "business_line": "TRADE",
+                         "allowed_metrics": ["__ALL__"]},
+        }, timeout=8)
+        if r.status_code != 200: return None
+        c = r.json()
+        r2 = httpx.post(f"{QUERY_ENGINE_URL}/v1/query/execute", json={
+            "sql": c["sql"], "params": c.get("params", {}), "row_limit": 1,
+        }, headers={"X-Tenant-Id": str(tenant_id), "X-User-Id": "0"},
+        timeout=15)
+        if r2.status_code != 200: return None
+        rows = r2.json().get("rows", [])
+        if not rows: return None
+        v = rows[0].get(metric_name)
+        return float(v) if v is not None else None
+    except Exception as e:
+        log.debug("fetch %s fail: %s", metric_name, e)
+        return None
+
+
+# 上下文默认值 - 当指标拉取失败时用 (避免规则永久失效)
+_CTX_DEFAULTS = {
+    "forecast_index_price_nextweek": 0,
+    "listed_price": 0,
+    "daily_inv_tonnage": 0,
+    "avg_inv_tonnage": 0,
+    "stockout_risk_score": 0,
+    "overstock_risk_score": 0,
+    "unhedged_tonnage": 0,
+    "hedge_position_limit": 1_000_000,
+    "aging_181_365_amount": 0,
+    "inv_amount": 1,           # 防止 /0
+}
+
+
 def _ctx_for_rule(rule: ActionRule, tenant_id: int) -> dict:
-    """加载该规则需要的指标值. 演示用 mock; 真实接 query-engine."""
-    # 几个常见上下文键 - 这里假设由别的指标计算服务塞到 Redis 或表
-    return {
-        "forecast_index_price_nextweek": 4150,
-        "listed_price": 4180,
-        "daily_inv_tonnage": 1820,
-        "avg_inv_tonnage": 1480,
-        "stockout_risk_score": 0.3,
-        "overstock_risk_score": 0.5,
-        "unhedged_tonnage": 800,
-        "hedge_position_limit": 1000,
-        "aging_181_365_amount": 5_000_000,
-        "inv_amount": 50_000_000,
-    }
+    """实时拉规则用到的指标. 静态键 = _CTX_DEFAULTS, 真查覆盖."""
+    ctx = dict(_CTX_DEFAULTS)
+    needed = [k for k in _CTX_DEFAULTS if k in (rule.when or "")]
+    for metric in needed:
+        v = _fetch_metric_value(tenant_id, metric)
+        if v is not None:
+            ctx[metric] = v
+    return ctx
 
 
 def write_inbox(tenant_id: int, rule: ActionRule, ctx: dict):
@@ -124,9 +163,11 @@ def scan_once() -> int:
     rules = load_rules()
     hits = 0
     for tid in _all_tenants():
-        ctx_base = _ctx_for_rule(None, tid) if False else None
         for r in rules:
-            ctx = _ctx_for_rule(r, tid)
+            try:
+                ctx = _ctx_for_rule(r, tid)
+            except Exception:
+                log.exception("ctx build failed for rule %s", r.id); continue
             if evaluate_when(r.when, ctx):
                 try:
                     write_inbox(tid, r, ctx)

@@ -2,6 +2,7 @@
 from __future__ import annotations
 import json
 import logging
+import os
 from datetime import datetime
 from typing import Any
 import httpx
@@ -34,27 +35,56 @@ def _all_tenants() -> list[int]:
     return [1]
 
 
+QUERY_ENGINE_URL = os.environ.get("QUERY_ENGINE_URL", "http://query-engine:8800") if False else \
+    os.environ.get("QUERY_ENGINE_URL", "http://localhost:8800")
+
+
 def fetch_metric_value(tenant_id: int, metric: str) -> dict[str, Any] | None:
-    """调 dsl-compiler + 执行返回 {value, [optional context like customer_name]}。
-    简化版: 用一个固定 DSL 模板, 实际可按 metric 配多变种."""
+    """完整流程: 调 dsl-compiler 编译 SQL → 调 query-engine 执行 → 拿真实值.
+
+    返回 {value, [其它上下文字段如 customer_name 等]}; 失败返回 None.
+    """
     dsl = {
         "metrics": [metric],
         "time": {"preset": "yesterday", "grain": "day"},
         "limit": 1,
     }
+    # 1) 编译
     try:
         r = httpx.post(f"{settings.dsl_compiler_url}/v1/dsl/compile", json={
             "dsl": dsl,
-            "context": {"tenant_id": tenant_id, "user_id": 0, "business_line": "TRADE"},
+            "context": {"tenant_id": tenant_id, "user_id": 0, "business_line": "TRADE",
+                         "allowed_metrics": ["__ALL__"]},
         }, timeout=8)
         if r.status_code != 200:
+            log.debug("compile %s rc=%s body=%s", metric, r.status_code, r.text[:150])
             return None
-        # 此处真实场景应进一步调 query-engine 拿数值,
-        # 演示阶段返回 mock 值或调 chat-orchestrator
-        # 简化: 不真实执行 SQL, 直接返回固定值便于单测
-        return {"value": 0.97}
+        compiled = r.json()
     except Exception as e:
-        log.warning("fetch metric %s failed: %s", metric, e)
+        log.warning("compile metric %s failed: %s", metric, e)
+        return None
+
+    sql = compiled.get("sql"); params = compiled.get("params") or {}
+    if not sql:
+        return None
+
+    # 2) 执行
+    try:
+        r = httpx.post(f"{QUERY_ENGINE_URL}/v1/query/execute", json={
+            "sql": sql, "params": params, "row_limit": 10,
+        }, headers={"X-Tenant-Id": str(tenant_id), "X-User-Id": "0"},
+        timeout=15)
+        if r.status_code != 200:
+            return None
+        rows = r.json().get("rows", [])
+        if not rows:
+            return None
+        # 第一行作为 ctx, 用 metric 名取 value
+        first = rows[0]
+        return {"value": first.get(metric, list(first.values())[0]),
+                **{k: v for k, v in first.items() if isinstance(v, (int, float, str))}}
+    except Exception as e:
+        log.warning("execute metric %s failed: %s", metric, e)
         return None
 
 

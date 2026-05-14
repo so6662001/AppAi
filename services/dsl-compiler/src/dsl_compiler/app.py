@@ -101,6 +101,34 @@ def preview_only(req: CompileRequest):
         raise HTTPException(400, detail={"code": e.code, "message": e.message, "hint": e.hint})
 
 
+@app.post("/v1/dsl/execute")
+def execute_dsl(req: CompileRequest):
+    """编译 + 调 query-engine 执行 + 返回 rows. 给上层一站式接口."""
+    try:
+        result = compiler.compile(req.dsl, req.context)
+    except CompileError as e:
+        raise HTTPException(400, detail={"code": e.code, "message": e.message, "hint": e.hint})
+
+    # 调 query-engine
+    qe_url = os.environ.get("QUERY_ENGINE_URL", "http://localhost:8800")
+    try:
+        import httpx
+        r = httpx.post(f"{qe_url}/v1/query/execute", json={
+            "sql": result.sql, "params": result.params, "row_limit": 5000,
+        }, headers={
+            "X-Tenant-Id": str(req.context.tenant_id),
+            "X-User-Id": str(req.context.user_id),
+        }, timeout=30)
+        if r.status_code == 200:
+            qe = r.json()
+            return {**result.model_dump(), **qe}
+        raise HTTPException(502, f"query-engine returned {r.status_code}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(503, f"query-engine unreachable: {e}")
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

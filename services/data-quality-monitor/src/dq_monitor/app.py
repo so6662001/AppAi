@@ -19,15 +19,25 @@ app = FastAPI(title="Data Quality Monitor", version="0.1.0")
 _scheduler = BackgroundScheduler()
 
 
+import re
+_TABLE_WHITELIST_RE = re.compile(r"^(dim|dwd|dws|ads|fact)_[a-z0-9_]{2,64}$")
+
+
+def _is_valid_fact_table(fact: str) -> bool:
+    """白名单: 必须是 dim_/dwd_/dws_/ads_/fact_ 开头, 防 SQL 标识符注入."""
+    return bool(fact) and bool(_TABLE_WHITELIST_RE.match(fact))
+
+
 def _scan():
-    """真实扫描:
-      1) 从 metric_def 拉所有 PUBLISHED 指标 + sla
-      2) 对每个指标的 fact 表查 MAX(src_update_time) 比对 sla
-      3) NULL_RATIO: 对核心数值列查空值比例
-      4) SPIKE: 对昨日和近7日均值比对
-      5) 命中失败 → 写 metric_quality_event
+    """周期质量扫描: 检查 metric_def 中每个指标的 fact 新鲜度.
+
+    安全:
+      - fact 表名严格白名单 (防止 metric_def 被污染时注入)
+      - 时间比较统一 UTC (避免时区错位)
+      - 单个指标失败不影响其他
     """
-    log.info("DQ scan triggered at %s", datetime.utcnow())
+    now_utc = datetime.utcnow()
+    log.info("DQ scan triggered at %s UTC", now_utc.isoformat())
     try:
         from sqlalchemy import create_engine, text
         gov_url = os.environ.get("GOV_DB_URL",
@@ -43,15 +53,22 @@ def _scan():
             """)).all()
 
         events = 0
+        skipped = 0
         for code, fact, sla in metrics:
             sla = sla or 60
+            if not _is_valid_fact_table(fact):
+                log.warning("skip invalid fact name: %s (metric=%s)", fact, code)
+                skipped += 1
+                continue
             try:
+                # fact 已通过白名单校验, 此处 f-string 安全
                 with sr.begin() as sc:
                     max_t = sc.execute(text(
-                        f"SELECT MAX(src_update_time) FROM {fact}"
+                        f"SELECT MAX(src_update_time) FROM {fact}"  # nosec B608
                     )).scalar()
                 if max_t is None: continue
-                delta_min = (datetime.utcnow() - max_t).total_seconds() / 60
+                # 统一用 UTC 比较 (假设 DB 列也是 UTC; 真实场景应在 DDL 用 UTC_TIMESTAMP)
+                delta_min = (now_utc - max_t).total_seconds() / 60
                 if delta_min > sla:
                     with gov.begin() as gc:
                         gc.execute(text("""
@@ -59,11 +76,13 @@ def _scan():
                               (metric_code, event_type, severity, detected_at, detail_json)
                             VALUES (:c, 'FRESHNESS', 'HIGH', NOW(), :d)
                         """), {"c": code,
-                               "d": json.dumps({"sla": sla, "actual_min": int(delta_min)})})
+                               "d": json.dumps({"sla_minutes": sla,
+                                                  "actual_minutes": int(delta_min)})})
                     events += 1
-            except Exception:
+            except Exception as e:
+                log.debug("scan metric %s failed: %s", code, e)
                 continue
-        log.info("DQ scan done, events=%d", events)
+        log.info("DQ scan done, events=%d, skipped=%d", events, skipped)
     except Exception as e:
         log.warning("DQ scan unavailable: %s", e)
 

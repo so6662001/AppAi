@@ -40,12 +40,16 @@ def execute(sql: str, params: dict, tenant_id: int, user_id: int,
                         "cache_layer": "L2"}
 
     t0 = time.time()
-    rows = _execute_sr(sql, params)
+    rows, error = _execute_sr_safe(sql, params)
     exec_ms = int((time.time() - t0) * 1000)
+    if error:
+        return {"rows": [], "exec_ms": exec_ms, "cache_hit": False,
+                "sql_hash": sql_hash, "scan_rows": 0,
+                "error": error, "status": "FAILED"}
     if len(rows) > row_limit:
         rows = rows[:row_limit]
 
-    # 写缓存 (L1 + L2 关联)
+    # 写缓存 (L1 + L2 关联) - 只有有结果的真实查询才缓存
     if rows and not no_cache:
         cache.set_(sql_hash, rows, ttl_sec=300)
         if question:
@@ -61,28 +65,42 @@ def execute(sql: str, params: dict, tenant_id: int, user_id: int,
             "sql_hash": sql_hash, "scan_rows": len(rows)}
 
 
-def _execute_sr(sql: str, params: dict) -> list[dict]:
+def _execute_sr_safe(sql: str, params: dict) -> tuple[list[dict], str | None]:
+    """返回 (rows, error). error=None 表示成功; error 是错误代码字符串."""
     try:
         import pymysql
-        host = os.environ.get("SR_HOST", "localhost")
-        port = int(os.environ.get("SR_PORT", 9030))
-        user = os.environ.get("SR_USER", "root")
-        pwd = os.environ.get("SR_PASS", "")
-        db = os.environ.get("SR_DB", "steel_dw")
-        safe = sql
-        for k in params: safe = safe.replace(f":{k}", f"%({k})s")
+    except ImportError:
+        return [], "E_DRIVER_MISSING"
+    host = os.environ.get("SR_HOST", "localhost")
+    port = int(os.environ.get("SR_PORT", 9030))
+    user = os.environ.get("SR_USER", "root")
+    pwd = os.environ.get("SR_PASS", "")
+    db = os.environ.get("SR_DB", "steel_dw")
+    safe = sql
+    for k in params: safe = safe.replace(f":{k}", f"%({k})s")
+    try:
         conn = pymysql.connect(host=host, port=port, user=user, password=pwd, db=db,
                                charset="utf8mb4", cursorclass=pymysql.cursors.DictCursor,
                                connect_timeout=3)
-        try:
-            with conn.cursor() as cur:
-                cur.execute(safe, params)
-                return list(cur.fetchall())
-        finally:
-            conn.close()
     except Exception as e:
-        log.warning("SR exec failed (return empty): %s", e)
-        return []
+        log.warning("SR connect failed: %s", e)
+        return [], "E_DB_UNREACHABLE"
+    try:
+        with conn.cursor() as cur:
+            cur.execute(safe, params)
+            return list(cur.fetchall()), None
+    except Exception as e:
+        log.warning("SR exec failed: %s", e)
+        return [], f"E_QUERY_FAILED: {str(e)[:200]}"
+    finally:
+        try: conn.close()
+        except Exception: pass
+
+
+# 兼容老调用
+def _execute_sr(sql: str, params: dict) -> list[dict]:
+    rows, _err = _execute_sr_safe(sql, params)
+    return rows
 
 
 def _write_audit(tenant_id: int, user_id: int, sql: str, sql_hash: str,

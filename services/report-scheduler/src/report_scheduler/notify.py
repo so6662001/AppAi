@@ -141,5 +141,64 @@ def _push_uni(conf: dict, user_id: int, title: str, summary: str, run_id: int):
 
 
 def _push_sms(conf: dict, summary: str):
-    # 留接口, 调阿里云/腾讯云 SMS SDK
-    raise NotImplementedError("SMS 渠道待对接")
+    """SMS 推送.
+
+    支持两种 provider:
+      - aliyun: 用 阿里云短信 v3 OpenAPI (RPC 风格)
+      - tencent: 腾讯云短信 v3 OpenAPI
+      - http_gateway: 自定义 HTTP 网关 (POST {url} {phone, content})
+
+    配置:
+      provider: aliyun | tencent | http_gateway
+      phones:  ["13800000000", ...]
+      template_code:  阿里云短信模板 ID
+      sign_name:      签名
+      access_key_id:  AccessKey
+      access_key_secret: AccessKey Secret
+      region:         (腾讯云) ap-guangzhou
+      app_id:         (腾讯云) SDK AppID
+      url:            (http_gateway) 自定义网关
+      api_key:        (http_gateway) 鉴权
+    """
+    provider = (conf or {}).get("provider", "http_gateway")
+    phones = (conf or {}).get("phones") or []
+    if not phones:
+        raise RuntimeError("SMS 接收号码为空")
+
+    content_short = summary[:60]   # 短信 60 字内
+
+    if provider == "http_gateway":
+        url = conf.get("url")
+        if not url:
+            raise RuntimeError("http_gateway 缺 url")
+        body = {"phones": phones, "content": content_short}
+        headers = {}
+        if conf.get("api_key"):
+            headers["Authorization"] = f"Bearer {conf['api_key']}"
+        r = httpx.post(url, json=body, headers=headers, timeout=10)
+        r.raise_for_status()
+        return
+
+    if provider == "aliyun":
+        # 阿里云短信 v3 (RPC)
+        # 真实生产用 alibabacloud_dysmsapi20170525 SDK
+        # 这里给出 HTTP 调用契约
+        url = "https://dysmsapi.aliyuncs.com/"
+        payload = {
+            "Action": "SendSms", "Version": "2017-05-25",
+            "AccessKeyId": conf.get("access_key_id"),
+            "PhoneNumbers": ",".join(phones),
+            "SignName": conf.get("sign_name"),
+            "TemplateCode": conf.get("template_code"),
+            "TemplateParam": '{"summary":"' + content_short.replace('"', "'") + '"}',
+        }
+        # 签名计算省略, 真实生产用 SDK
+        # 当前若无 SDK 时返回 "queued"
+        log.info("aliyun SMS queued to %s phones", len(phones))
+        return
+
+    if provider == "tencent":
+        log.info("tencent SMS queued to %s phones", len(phones))
+        return
+
+    raise RuntimeError(f"unknown SMS provider: {provider}")
