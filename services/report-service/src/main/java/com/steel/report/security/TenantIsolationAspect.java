@@ -29,6 +29,26 @@ public class TenantIsolationAspect {
         if (tid <= 0) {
             throw new SecurityException("invalid tenant_id");
         }
-        // TODO: 校验 JWT 中的 tenant_id 与请求体中的一致, 防越权
+        // 严格校验: 扫描参数中所有 Map / Bean 的 tenantId 字段, 必须与 header 一致
+        for (Object arg : jp.getArgs()) {
+            if (arg == null) continue;
+            Long inBody = null;
+            if (arg instanceof java.util.Map) {
+                Object v = ((java.util.Map<?, ?>) arg).get("tenant_id");
+                if (v == null) v = ((java.util.Map<?, ?>) arg).get("tenantId");
+                if (v instanceof Number) inBody = ((Number) v).longValue();
+            } else {
+                try {
+                    var f = arg.getClass().getMethod("getTenantId");
+                    Object v = f.invoke(arg);
+                    if (v instanceof Number) inBody = ((Number) v).longValue();
+                } catch (NoSuchMethodException ignored) {
+                } catch (Exception ignored) {}
+            }
+            if (inBody != null && inBody != tid) {
+                throw new SecurityException(
+                    "tenant_id mismatch: header=" + tid + " body=" + inBody);
+            }
+        }
     }
 }

@@ -1,5 +1,6 @@
 package com.steel.payment.web;
 
+import com.steel.payment.wechat.WechatPayV3Client;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -26,9 +27,13 @@ import java.util.UUID;
 public class PaymentController {
 
     private final JdbcTemplate jdbc;
+    private final WechatPayV3Client wechat;
 
     @Autowired
-    public PaymentController(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    public PaymentController(JdbcTemplate jdbc, WechatPayV3Client wechat) {
+        this.jdbc = jdbc;
+        this.wechat = wechat;
+    }
 
     @PostMapping("/orders")
     public ResponseEntity<Map<String, Object>> createOrder(@RequestBody Map<String, Object> body) {
@@ -53,14 +58,29 @@ public class PaymentController {
 
     @PostMapping("/orders/{id}/pay")
     public Map<String, Object> initiatePay(@PathVariable long id) {
-        // 占位: 真实环境调微信 V3 unified order 接口拿 prepay_id / qr_code
         Map<String, Object> order = jdbc.queryForMap(
             "SELECT * FROM billing_order WHERE order_id=?", id);
+        String channel = (String) order.get("pay_channel");
+        String orderNo = (String) order.get("order_no");
+        double amount = ((Number) order.get("pay_amount")).doubleValue();
+
+        String qrCode;
+        if ("WECHAT".equalsIgnoreCase(channel) && wechat.isEnabled()) {
+            // 真实微信 V3 调用
+            try {
+                qrCode = wechat.createNativeOrder(orderNo,
+                    Math.round(amount * 100), "钢铁 AI 经营分析平台 #" + id);
+            } catch (Exception e) {
+                qrCode = "weixin://wxpay/bizpayurl?pr=ERR_" + e.getMessage().substring(0, Math.min(20, e.getMessage().length()));
+            }
+        } else {
+            // 降级 demo
+            qrCode = "weixin://wxpay/bizpayurl?pr=DEMO_" + id;
+        }
         return Map.of(
-            "order_id", id,
-            "channel", order.get("pay_channel"),
-            "qr_code", "weixin://wxpay/bizpayurl?pr=DEMO_" + id,
-            "expire_in_seconds", 600
+            "order_id", id, "channel", channel,
+            "qr_code", qrCode, "expire_in_seconds", 600,
+            "real_payment", wechat.isEnabled()
         );
     }
 

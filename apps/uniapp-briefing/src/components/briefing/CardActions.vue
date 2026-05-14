@@ -1,9 +1,17 @@
 <script setup lang="ts">
 import type { CardAction } from '@/types/briefing';
 import { useActions } from '@/composables/useActions';
+import { t } from '@/i18n';
 
 const props = defineProps<{ cardId: number; actions: CardAction[] }>();
 const { run } = useActions();
+
+function i18nLabel(a: CardAction): string {
+  // 已知动作类型尝试映射到 i18n
+  if (a.type === 'chat' && a.label === '追问 AI') return t('action.askAi');
+  if (a.type === 'navigate' && a.label === '查看详情') return t('action.detail');
+  return a.label;
+}
 </script>
 
 <template>
@@ -13,7 +21,7 @@ const { run } = useActions();
       :class="['act-btn', i === 0 ? 'primary' : 'default']"
       size="mini"
       @tap="run(cardId, a)"
-    >{{ a.label }}</button>
+    >{{ i18nLabel(a) }}</button>
   </view>
 </template>
 

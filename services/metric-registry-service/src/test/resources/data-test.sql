@@ -8,3 +8,7 @@ VALUES
 INSERT INTO metric_usage_ref (metric_code, ref_type, ref_id_str, tenant_id)
 VALUES ('M001', 'DASHBOARD', 'dashboard-1', 1),
        ('M001', 'AI_SESSION', 'sid-1', 1);
+
+INSERT INTO sys_permission (perm_code, perm_name) VALUES
+  ('metric.read', '读指标'),
+  ('finance.read', '财务数据查看');

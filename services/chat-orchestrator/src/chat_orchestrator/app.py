@@ -24,6 +24,15 @@ app = FastAPI(title="Chat Orchestrator", version="0.1.0")
 app.add_middleware(CORSMiddleware,
                    allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
+# Prometheus /metrics
+try:
+    import sys, pathlib
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[3] / "_shared"))
+    from observability import setup as obs_setup
+    obs_setup(app, service_name="chat-orchestrator")
+except Exception:
+    pass
+
 
 class ChatMessageReq(BaseModel):
     sessionId: str | None = None

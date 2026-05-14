@@ -23,6 +23,7 @@ const dateLabel = computed(() => {
   return `${store.feed.biz_date.substring(5)} ${weekdays[d.getDay()]}`;
 });
 
+import { t } from '@/i18n';
 function goHistory() { uni.navigateTo({ url: '/pages/ai-briefing/history' }); }
 function goLayout() { uni.navigateTo({ url: '/pages/ai-briefing/layout-setting' }); }
 </script>
@@ -43,8 +44,8 @@ function goLayout() { uni.navigateTo({ url: '/pages/ai-briefing/layout-setting' 
     />
 
     <view class="footer">
-      <text class="more" @tap="goHistory">查看历史早报 ›</text>
-      <text class="more" @tap="goLayout">个性化设置</text>
+      <text class="more" @tap="goHistory">{{ t('briefing.history') }} ›</text>
+      <text class="more" @tap="goLayout">{{ t('briefing.settings') }}</text>
     </view>
   </view>
 </template>

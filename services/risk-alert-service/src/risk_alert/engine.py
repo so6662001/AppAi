@@ -79,6 +79,51 @@ def write_inbox(tenant_id: int, user_targets: list[str], rule: AlertRule, value,
                 "title": title or rule.id,
                 "payload": payload,
             })
+    # 真实推送 - 复用 report-scheduler 通知基础设施
+    _real_push(tenant_id, rule, title, value, context)
+
+
+def _real_push(tenant_id: int, rule, title: str, value, context: dict):
+    """对接 report-scheduler/notify.py 实际发送 WECOM/DINGTALK/EMAIL."""
+    try:
+        # 查租户通知配置
+        with get_db().begin() as conn:
+            rows = conn.execute(text("""
+                SELECT channel, config_json FROM tenant_notify_config
+                WHERE tenant_id=:t AND is_active=1 AND is_default=1
+            """), {"t": tenant_id}).all()
+        if not rows:
+            return
+        # 引入 notify (报表调度器同包, 通过 PYTHONPATH 共享, 或独立调用 notification-service)
+        try:
+            sys_path_hack()
+            from report_scheduler.notify import push
+        except Exception:
+            log.debug("notify module unavailable, fallback INAPP only")
+            return
+        text_summary = f"{title} (value={value})"
+        for ch, cfg_raw in rows:
+            try:
+                cfg = json.loads(cfg_raw) if isinstance(cfg_raw, str) else cfg_raw
+                r = push(ch, tenant_id=tenant_id, user_id=0,
+                         title=title, summary=text_summary,
+                         blocks=[{"type": "kpi",
+                                  "kpis": [{"metric": rule.metric, "label": rule.metric,
+                                            "value": value, "unit": "", "format": "amount"}]}],
+                         run_id=0, report_name=rule.id, conf=cfg)
+                log.info("risk push ch=%s ok=%s err=%s", ch, r.ok, r.error or "")
+            except Exception as e:
+                log.warning("push %s failed: %s", ch, e)
+    except Exception:
+        log.exception("real push failed")
+
+
+def sys_path_hack():
+    """在容器内 report-scheduler 已挂载到 PYTHONPATH; 本地开发时按需扩展."""
+    import sys, os
+    p = os.environ.get("REPORT_SCHEDULER_SRC", "/workspace/services/report-scheduler/src")
+    if p and p not in sys.path:
+        sys.path.insert(0, p)
 
 
 def evaluate_rule_for_tenant(rule: AlertRule, tenant_id: int) -> bool:

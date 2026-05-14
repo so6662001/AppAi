@@ -38,3 +38,26 @@ def test_executor_returns_empty_when_sr_down():
     r = executor.execute("SELECT 1", {}, 1, 1, no_cache=True)
     assert "rows" in r and "exec_ms" in r
     assert r["cache_hit"] is False
+
+
+def test_l2_cache_record_and_lookup(monkeypatch):
+    import fakeredis
+    fake = fakeredis.FakeRedis(decode_responses=True)
+    monkeypatch.setattr(cache, "_redis", lambda: fake)
+    # 先 set L1
+    cache.set_("hash1", [{"a": 1}], ttl_sec=60)
+    # 关联记录 L2
+    cache.l2_record("上周华东销售额", "hash1")
+    # 语义相似的问题应该命中
+    hit = cache.l2_lookup("上周华东销售额")
+    assert hit and hit[0] == "hash1"
+
+
+def test_l2_cache_no_match_for_unrelated(monkeypatch):
+    import fakeredis
+    fake = fakeredis.FakeRedis(decode_responses=True)
+    monkeypatch.setattr(cache, "_redis", lambda: fake)
+    cache.set_("hash1", [{"a": 1}], ttl_sec=60)
+    cache.l2_record("上周华东销售额", "hash1")
+    hit = cache.l2_lookup("生产线 OEE 故障", sim_threshold=0.92)
+    assert hit is None

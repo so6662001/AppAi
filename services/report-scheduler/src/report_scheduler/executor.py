@@ -9,6 +9,7 @@
 from __future__ import annotations
 import json
 import time
+import json
 import logging
 from datetime import datetime
 from typing import Any
@@ -21,9 +22,13 @@ from .db import (
 from .cron import next_run_at
 from .notify import push, NotifyResult
 from .tenant_config import get_config as get_tenant_config
+import os
 
 
 log = logging.getLogger("scheduler.executor")
+
+
+CHAT_ORCHESTRATOR_URL = os.environ.get("CHAT_ORCHESTRATOR_URL", "")
 
 
 def execute_report(report: dict) -> None:
@@ -38,6 +43,19 @@ def execute_report(report: dict) -> None:
     log.info("execute report=%s run=%s tenant=%s", report_id, run_id, tenant_id)
 
     try:
+        # 优先: 调 chat-orchestrator 拿渲染好的 blocks + AI 总结 (#18)
+        if CHAT_ORCHESTRATOR_URL:
+            try:
+                co_result = _exec_via_chat(report, tenant_id, user_id)
+                if co_result:
+                    blocks, summary, sql_text, rows, biz_tokens = co_result
+                    _finalize_success(run_id, report_id, started, sql_text, rows, blocks,
+                                       summary, biz_tokens, tenant_id, user_id)
+                    return
+            except Exception as e:
+                log.warning("chat orchestrator path failed, fallback to direct SQL: %s", e)
+
+        # Fallback: 直接编译 + 执行 + 本地渲染
         # 1) 编译 DSL
         sql_text, params, biz_tokens = _compile(report["dsl_json"], tenant_id, user_id)
 
@@ -47,35 +65,10 @@ def execute_report(report: dict) -> None:
         # 3) 渲染 blocks
         blocks, summary = _render(report, rows)
 
-        # 4) 写 chat_message (用户在聊天页能看到)
-        msg_id = write_chat_message(
-            tenant_id=tenant_id, user_id=user_id,
-            session_id=f"scheduled-{report_id}",
-            blocks=blocks, summary=summary, report_id=report_id,
-        )
+        # (后续步骤 4-7 移到 _finalize_success)
 
-        # 5) 推送
-        push_results = _notify_all(report, run_id, summary, blocks)
-
-        # 6) 落库
-        status = "SUCCESS" if rows else ("EMPTY" if not report.get("push_silent_if_empty") else "SUCCESS")
-        update_run(run_id,
-                   finished_at=datetime.utcnow(),
-                   duration_ms=int((datetime.utcnow() - started).total_seconds() * 1000),
-                   status=status,
-                   sql_text=sql_text,
-                   rows_returned=len(rows),
-                   blocks_json=blocks,
-                   result_summary=summary,
-                   push_results=[r.to_dict() for r in push_results],
-                   biz_tokens_charged=biz_tokens,
-                   message_id=msg_id)
-
-        # 7) 计算下次执行时间, 重置失败次数
-        nxt = next_run_at(report.get("cron_expr"), report.get("schedule_type"),
-                          datetime.utcnow(), report.get("timezone") or settings.tz)
-        update_report_next_run(report_id, next_run_at=nxt, last_run_at=datetime.utcnow(), fail_count=0)
-
+        _finalize_success(run_id, report_id, started, sql_text, rows, blocks,
+                          summary, biz_tokens, tenant_id, user_id, report=report)
     except Exception as e:
         log.exception("execute failed report=%s", report_id)
         update_run(run_id,
@@ -92,6 +85,72 @@ def execute_report(report: dict) -> None:
 
 
 # -------- 内部辅助 --------
+
+def _exec_via_chat(report: dict, tenant_id: int, user_id: int):
+    """通过 chat-orchestrator 拿渲染好的 blocks + AI 总结. 返回 None 表示失败."""
+    dsl = report["dsl_json"]
+    # 把 DSL 转成自然语言提示, 让 chat-orchestrator 走完整流程
+    text_prompt = report.get("question") or f"定时报表: {report.get('name', '')}"
+    try:
+        r = httpx.post(f"{CHAT_ORCHESTRATOR_URL}/v1/chat/preview", json={
+            "text": text_prompt,
+            "sessionId": f"scheduled-{report['report_id']}",
+        }, headers={
+            "X-Tenant-Id": str(tenant_id),
+            "X-User-Id": str(user_id),
+        }, timeout=30)
+        r.raise_for_status()
+        events = r.json().get("events", [])
+        blocks = []
+        summary_parts = []
+        sql_text = ""
+        rows = []
+        biz_tokens = 0
+        for ev in events:
+            t = ev["event"]; d = ev["data"]
+            if t == "data":
+                blocks.append(d)
+            elif t == "token":
+                summary_parts.append(d if isinstance(d, str) else json.dumps(d))
+            elif t == "usage":
+                biz_tokens = (d if isinstance(d, dict) else {}).get("bizTokensCharged", 0) or 0
+            elif t == "status" and isinstance(d, dict) and "dsl" in d:
+                pass
+        return blocks, "".join(summary_parts), sql_text, rows, biz_tokens
+    except Exception as e:
+        log.warning("chat orchestrator call failed: %s", e)
+        return None
+
+
+def _finalize_success(run_id, report_id, started, sql_text, rows, blocks, summary,
+                      biz_tokens, tenant_id, user_id, report=None):
+    """成功执行后的统一收尾: 写 chat_message + 推送 + 落库 + 算下次时间."""
+    msg_id = write_chat_message(
+        tenant_id=tenant_id, user_id=user_id,
+        session_id=f"scheduled-{report_id}",
+        blocks=blocks, summary=summary, report_id=report_id,
+    )
+    push_results = _notify_all(report or {"report_id": report_id, "tenant_id": tenant_id,
+                                            "user_id": user_id, "channels": ["INAPP"]},
+                                run_id, summary, blocks)
+    status = "SUCCESS" if rows else ("EMPTY" if not (report or {}).get("push_silent_if_empty") else "SUCCESS")
+    update_run(run_id,
+               finished_at=datetime.utcnow(),
+               duration_ms=int((datetime.utcnow() - started).total_seconds() * 1000),
+               status=status,
+               sql_text=sql_text,
+               rows_returned=len(rows),
+               blocks_json=blocks,
+               result_summary=summary,
+               push_results=[r.to_dict() for r in push_results],
+               biz_tokens_charged=biz_tokens,
+               message_id=msg_id)
+    if report:
+        nxt = next_run_at(report.get("cron_expr"), report.get("schedule_type"),
+                          datetime.utcnow(), report.get("timezone") or settings.tz)
+        update_report_next_run(report_id, next_run_at=nxt, last_run_at=datetime.utcnow(),
+                                fail_count=0)
+
 
 def _compile(dsl: dict, tenant_id: int, user_id: int) -> tuple[str, dict, int]:
     """调 dsl-compiler 拿到 SQL + 参数 + 估算 token。"""

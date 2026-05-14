@@ -13,16 +13,31 @@ log = logging.getLogger("query.exec")
 
 
 def execute(sql: str, params: dict, tenant_id: int, user_id: int,
-            no_cache: bool = False, row_limit: int = 50000) -> dict:
+            no_cache: bool = False, row_limit: int = 50000,
+            question: str | None = None) -> dict:
     """返回 {rows, exec_ms, cache_hit, sql_hash, scan_rows}.
-    SQL 已由上游 DSL 编译器加固 (LIMIT/参数化/只读账号)."""
+    SQL 已由上游 DSL 编译器加固 (LIMIT/参数化/只读账号).
+
+    缓存策略:
+      L1: sql_hash 完全匹配
+      L2: question 语义相似 (复用过往 sql_hash 的结果)
+    """
 
     sql_hash = cache.hash_sql(sql, params)
     if not no_cache:
+        # L1
         cached = cache.get(sql_hash)
         if cached is not None:
             return {"rows": cached, "exec_ms": 0, "cache_hit": True,
-                    "sql_hash": sql_hash, "scan_rows": len(cached)}
+                    "sql_hash": sql_hash, "scan_rows": len(cached), "cache_layer": "L1"}
+        # L2 语义相似
+        if question:
+            hit = cache.l2_lookup(question)
+            if hit:
+                _, rows = hit
+                return {"rows": rows, "exec_ms": 0, "cache_hit": True,
+                        "sql_hash": sql_hash, "scan_rows": len(rows),
+                        "cache_layer": "L2"}
 
     t0 = time.time()
     rows = _execute_sr(sql, params)
@@ -30,9 +45,11 @@ def execute(sql: str, params: dict, tenant_id: int, user_id: int,
     if len(rows) > row_limit:
         rows = rows[:row_limit]
 
-    # 写缓存
+    # 写缓存 (L1 + L2 关联)
     if rows and not no_cache:
         cache.set_(sql_hash, rows, ttl_sec=300)
+        if question:
+            cache.l2_record(question, sql_hash, ttl_sec=1800)
 
     # 写审计 (异步, 失败不阻塞)
     try:

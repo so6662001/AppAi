@@ -2,7 +2,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
-from .embed import embed_bow, cosine
+from .embed import embed, cosine
 
 
 @dataclass
@@ -19,7 +19,7 @@ class VectorStore:
         self._docs: list[Doc] = []
 
     def upsert(self, doc_id: str, text: str, meta: dict | None = None):
-        v = embed_bow(text)
+        v = embed(text)
         # 替换或追加
         for i, d in enumerate(self._docs):
             if d.doc_id == doc_id:
@@ -27,7 +27,7 @@ class VectorStore:
         self._docs.append(Doc(doc_id, text, meta or {}, v))
 
     def search(self, query: str, top_k: int = 5) -> list[dict]:
-        qv = embed_bow(query)
+        qv = embed(query)
         scored = [(cosine(qv, d.vec), d) for d in self._docs]
         scored.sort(key=lambda x: -x[0])
         return [{"doc_id": d.doc_id, "score": s, "text": d.text, "meta": d.meta}

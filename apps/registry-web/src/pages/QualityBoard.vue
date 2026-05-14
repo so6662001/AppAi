@@ -40,7 +40,12 @@ function sevTag(s: string) { return s === 'HIGH' || s === 'CRITICAL' ? 'danger' 
 
     <el-card style="margin-top:16px;">
       <template #header>SLA 健康度热力图 (近 30 天)</template>
-      <el-empty description="待接入 /quality/sla-heatmap 渲染 ECharts heatmap" />
+      <SlaHeatmap />
     </el-card>
   </div>
 </template>
+
+<script lang="ts">
+import SlaHeatmap from '@/components/SlaHeatmap.vue';
+export default { components: { SlaHeatmap } };
+</script>

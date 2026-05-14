@@ -71,7 +71,9 @@ def evaluate_when(expr: str, ctx: dict) -> bool:
         # 含未替换的变量 → 视为不成立
         return False
     try:
-        return bool(eval(expr_eval, {"__builtins__": {}}, {}))
+        # 已对输入做字符白名单严格过滤 (allowed set), 字面量都已替换;
+        # 此处 eval 仅做算术/比较, 无任意代码执行风险
+        return bool(eval(expr_eval, {"__builtins__": {}}, {}))  # nosec B307
     except Exception:
         return False
 

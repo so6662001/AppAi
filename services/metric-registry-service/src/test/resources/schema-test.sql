@@ -24,3 +24,58 @@ CREATE TABLE metric_usage_ref (
   ref_id_str VARCHAR(128),
   tenant_id BIGINT
 );
+
+-- RBAC 表
+DROP TABLE IF EXISTS sys_user;
+CREATE TABLE sys_user (
+  user_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  tenant_id BIGINT NOT NULL,
+  username VARCHAR(64),
+  display_name VARCHAR(128),
+  email VARCHAR(128),
+  phone VARCHAR(32),
+  password_hash VARCHAR(128),
+  is_active TINYINT DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+DROP TABLE IF EXISTS sys_role;
+CREATE TABLE sys_role (
+  role_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  tenant_id BIGINT NOT NULL,
+  role_code VARCHAR(32),
+  role_name VARCHAR(64),
+  is_active TINYINT DEFAULT 1
+);
+DROP TABLE IF EXISTS sys_user_role;
+CREATE TABLE sys_user_role (
+  user_id BIGINT, role_id BIGINT,
+  PRIMARY KEY(user_id, role_id)
+);
+DROP TABLE IF EXISTS sys_permission;
+CREATE TABLE sys_permission (
+  perm_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  perm_code VARCHAR(64), perm_name VARCHAR(128)
+);
+DROP TABLE IF EXISTS sys_role_permission;
+CREATE TABLE sys_role_permission (
+  role_id BIGINT, perm_id BIGINT,
+  PRIMARY KEY(role_id, perm_id)
+);
+DROP TABLE IF EXISTS sys_row_acl;
+CREATE TABLE sys_row_acl (
+  acl_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT,
+  resource VARCHAR(32),
+  resource_ids CLOB
+);
+
+DROP TABLE IF EXISTS metric_quality_event;
+CREATE TABLE metric_quality_event (
+  event_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  metric_code VARCHAR(64),
+  event_type VARCHAR(32),
+  severity VARCHAR(8),
+  detected_at TIMESTAMP,
+  detail_json CLOB,
+  resolved_at TIMESTAMP
+);

@@ -32,19 +32,23 @@ public class ExportController {
                        HttpServletResponse resp) throws IOException {
         ReportRun r = runRepo.findById(runId);
         if (r == null) { resp.setStatus(404); return; }
-
         List<Map<String, Object>> rows = r.getBlocksJson() == null ? List.of()
             : extractTableRows(r.getBlocksJson());
 
-        resp.setContentType("text/csv; charset=utf-8");
-        resp.setHeader("Content-Disposition",
-            "attachment; filename=report_" + runId + ".csv");
-        PrintWriter w = resp.getWriter();
-        w.write("\uFEFF");          // UTF-8 BOM 让 Excel 正确识别中文
-        if (rows.isEmpty()) {
-            w.write("(no data)\n");
-            return;
+        if ("xlsx".equalsIgnoreCase(format)) {
+            exportXlsx(rows, runId, resp);
+        } else {
+            exportCsv(rows, runId, resp);
         }
+    }
+
+    private void exportCsv(List<Map<String, Object>> rows, long runId,
+                           HttpServletResponse resp) throws IOException {
+        resp.setContentType("text/csv; charset=utf-8");
+        resp.setHeader("Content-Disposition", "attachment; filename=report_" + runId + ".csv");
+        PrintWriter w = resp.getWriter();
+        w.write("\uFEFF");
+        if (rows.isEmpty()) { w.write("(no data)\n"); return; }
         List<String> cols = new java.util.ArrayList<>(rows.get(0).keySet());
         w.write(String.join(",", cols) + "\n");
         for (var row : rows) {
@@ -57,6 +61,42 @@ public class ExportController {
             w.write(String.join(",", vs) + "\n");
         }
         w.flush();
+    }
+
+    private void exportXlsx(List<Map<String, Object>> rows, long runId,
+                            HttpServletResponse resp) throws IOException {
+        resp.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        resp.setHeader("Content-Disposition", "attachment; filename=report_" + runId + ".xlsx");
+        try (var wb = new org.apache.poi.xssf.streaming.SXSSFWorkbook(100)) {
+            var sheet = wb.createSheet("Report");
+            if (rows.isEmpty()) {
+                sheet.createRow(0).createCell(0).setCellValue("(no data)");
+                wb.write(resp.getOutputStream());
+                return;
+            }
+            List<String> cols = new java.util.ArrayList<>(rows.get(0).keySet());
+            var headerStyle = wb.createCellStyle();
+            var font = wb.createFont(); font.setBold(true);
+            headerStyle.setFont(font);
+            var hr = sheet.createRow(0);
+            for (int i = 0; i < cols.size(); i++) {
+                var cell = hr.createCell(i);
+                cell.setCellValue(cols.get(i));
+                cell.setCellStyle(headerStyle);
+            }
+            int ri = 1;
+            for (var row : rows) {
+                var sr = sheet.createRow(ri++);
+                for (int i = 0; i < cols.size(); i++) {
+                    Object v = row.get(cols.get(i));
+                    var cell = sr.createCell(i);
+                    if (v == null) cell.setCellValue("");
+                    else if (v instanceof Number) cell.setCellValue(((Number) v).doubleValue());
+                    else cell.setCellValue(v.toString());
+                }
+            }
+            wb.write(resp.getOutputStream());
+        }
     }
 
     @SuppressWarnings("unchecked")

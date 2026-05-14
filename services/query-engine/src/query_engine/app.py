@@ -14,6 +14,7 @@ class ExecuteReq(BaseModel):
     params: dict = {}
     no_cache: bool = False
     row_limit: int = 50000
+    question: str | None = None      # 携带原始问题, 启用 L2 语义缓存
 
 
 @app.get("/health")
@@ -25,7 +26,8 @@ def exec_query(req: ExecuteReq, request: Request):
     tid = int(request.headers.get("X-Tenant-Id", "1"))
     uid = int(request.headers.get("X-User-Id", "1"))
     return executor.execute(req.sql, req.params, tid, uid,
-                            no_cache=req.no_cache, row_limit=req.row_limit)
+                            no_cache=req.no_cache, row_limit=req.row_limit,
+                            question=req.question)
 
 
 if __name__ == "__main__":
