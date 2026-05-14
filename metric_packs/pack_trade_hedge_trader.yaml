@@ -1,0 +1,43 @@
+pack_id: PK_TRADE_HEDGE_TRADER
+name: 套保员包-钢贸
+description: 套保头寸/期货盈亏/库存浮亏专属视图
+business_line: TRADE
+role_code: HEDGE_TRADER
+
+metrics:
+  - inv_tonnage
+  - inv_amount
+  - inv_mtm_pnl
+  - unhedged_tonnage
+  - hedge_ratio
+  - hedge_net_exposure
+  - hedge_net_exposure_breach
+  - hedge_realized_pnl
+  - point_pricing_open_qty
+  - price_premium_vs_index
+  - purchase_price_vs_index
+  - forecast_index_price_nextweek
+
+summary_kpis:
+  - hedge_net_exposure
+  - inv_mtm_pnl
+  - hedge_ratio
+  - hedge_realized_pnl
+
+briefing_cards: [SUMMARY, FORECAST, ADVICE]
+
+recommended_questions:
+  - 当前套保净敞口
+  - 库存浮亏多少
+  - 未套保头寸吨数
+  - 本月期货平仓盈亏
+  - 下周指数价格预测
+  - 套保率
+  - 是否触发套保超限
+  - 各合约头寸分布
+  - 点价未结量
+  - 套保 vs 现货价差
+
+default_subscriptions:
+  - TPL_HEDGE_DAILY
+default_dashboard: /pages/dashboard/hedge

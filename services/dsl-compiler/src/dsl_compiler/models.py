@@ -63,6 +63,12 @@ class CompileContext(BaseModel):
     visible_org_ids: Optional[list[int]] = None
     visible_warehouse_ids: Optional[list[int]] = None
     visible_workcenter_ids: Optional[list[int]] = None
+    visible_customer_ids: Optional[list[int]] = None
+    visible_sales_owner_ids: Optional[list[int]] = None
+    # 角色化指标包 (用户能看到的指标白名单)
+    # 为空 = 不限制 (兼容老调用); ["__ALL__"] = 所有指标
+    allowed_metrics: Optional[list[str]] = None
+    primary_role: Optional[str] = None
     # 计费默认参数
     bizToken_estimate_base: int = 200
 

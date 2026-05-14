@@ -1,0 +1,37 @@
+pack_id: PK_TRADE_CUSTOMER_SERVICE
+name: 客服包-钢贸
+description: 客诉/退货/服务质量
+business_line: TRADE
+role_code: CUSTOMER_SERVICE
+
+metrics:
+  - customer_complaint_count
+  - customer_complaint_rate
+  - complaint_8d_close_rate
+  - return_rate
+  - cancel_rate
+  - claim_compensation_expense
+  - on_time_delivery_rate
+
+summary_kpis:
+  - customer_complaint_count
+  - complaint_8d_close_rate
+  - return_rate
+  - on_time_delivery_rate
+
+briefing_cards: [SUMMARY, INSIGHT]
+
+recommended_questions:
+  - 本周客诉数
+  - 8D 关闭率
+  - 退货率最高的客户
+  - 我处理的客户清单
+  - 上月客户赔偿
+  - 达交率不达标的订单
+  - 客户满意度
+  - 高频投诉问题分类
+  - 待处理客诉数
+  - 客诉解决时长
+
+default_subscriptions: [TPL_CS_DAILY]
+default_dashboard: /pages/dashboard/customer-service

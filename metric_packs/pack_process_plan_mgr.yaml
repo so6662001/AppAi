@@ -1,0 +1,20 @@
+pack_id: PK_PROCESS_PLAN_MGR
+name: 计划经理包
+business_line: PROCESS
+role_code: PLAN_MGR
+metrics: [wo_count, wo_complete_rate, wo_overdue_rate, plan_attainment_rate, raw_material_inv_days, inv_tonnage, safety_stock_breach_count]
+summary_kpis: [plan_attainment_rate, wo_overdue_rate, safety_stock_breach_count, raw_material_inv_days]
+briefing_cards: [SUMMARY, INSIGHT]
+recommended_questions:
+  - 计划达成率
+  - 待排程工单
+  - 物料缺料预警
+  - 安全库存触发
+  - 原料库存天数
+  - 工单逾期清单
+  - 排程冲突
+  - 紧急插单影响
+  - 本周交付计划
+  - 物料齐套率
+default_subscriptions: []
+default_dashboard: /pages/dashboard/plan

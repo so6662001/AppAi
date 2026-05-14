@@ -28,7 +28,7 @@ def validate_dsl_basic(dsl: DSL) -> None:
 
 def resolve_metrics(dsl: DSL, registry: MetricRegistry,
                     ctx: CompileContext) -> list[MetricDef]:
-    """根据指标名/编号/同义词找出 MetricDef, 并做业务类型/权限校验。"""
+    """根据指标名/编号/同义词找出 MetricDef, 并做业务类型/权限/角色包校验。"""
     resolved: list[MetricDef] = []
     for key in dsl.metrics:
         m = registry.get(key)
@@ -49,13 +49,25 @@ def resolve_metrics(dsl: DSL, registry: MetricRegistry,
                 f"指标 {m.label or m.name} 不适用于当前业务类型 {ctx.business_line}",
                 hint=f"该指标适用于: {','.join(m.applicable)}"
             )
+        # 角色化指标包 - 用户能否看到这个指标本身
+        if ctx.allowed_metrics is not None and len(ctx.allowed_metrics) > 0 \
+                and "__ALL__" not in ctx.allowed_metrics \
+                and m.name not in ctx.allowed_metrics \
+                and (m.code or "") not in ctx.allowed_metrics:
+            raise CompileError(
+                "E_METRIC_OUT_OF_PACK",
+                f"指标 {m.label or m.name} 不在你的角色包内",
+                hint=f"你的角色 {ctx.primary_role or 'USER'} 可见 {len(ctx.allowed_metrics)} 个指标; "
+                      "如需查看, 请在指标超市申请权限"
+            )
+        # auth_required 权限点校验
         if m.auth_required:
             missing = [s for s in m.auth_required if s not in ctx.scopes]
             if missing:
                 raise CompileError(
                     "E_PERMISSION",
-                    f"指标 {m.name} 需要权限 {missing}",
-                    hint="请联系管理员申请"
+                    f"指标 {m.label or m.name} 需要权限: {','.join(missing)}",
+                    hint="请联系管理员申请, 或在 '指标超市' 提交临时授权申请"
                 )
         resolved.append(m)
     return resolved

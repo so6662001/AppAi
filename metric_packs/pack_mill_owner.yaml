@@ -1,0 +1,20 @@
+pack_id: PK_MILL_OWNER
+name: 钢厂厂长包
+business_line: MILL
+role_code: MILL_OWNER
+metrics: ALL
+summary_kpis: [hot_rolling_tonnage, cost_per_ton, net_margin, energy_per_ton]
+briefing_cards: [SUMMARY, RISK, ADVICE, INSIGHT, FORECAST]
+recommended_questions:
+  - 昨日出钢量
+  - 各产线 OEE
+  - 吨钢综合能耗
+  - 烧损率
+  - 化学成分合格率
+  - 钢卷降级率
+  - 库存浮亏
+  - 本月净利率
+  - 下周价格预测
+  - 设备故障 Top
+default_subscriptions: [TPL_MILL_OWNER_DAILY, TPL_MILL_MONTHLY_PROFIT]
+default_dashboard: /pages/dashboard/mill-owner

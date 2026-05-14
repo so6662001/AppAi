@@ -1,0 +1,45 @@
+## 钢厂质检 + 能源 + CFO 三个包
+
+- pack_id: PK_MILL_QC_DIRECTOR
+  name: 钢厂质检主管包
+  business_line: MILL
+  role_code: QC_DIRECTOR
+  metrics: [ftq, dppm, customer_complaint_count, customer_complaint_rate, complaint_8d_close_rate,
+            weight_deviation_rate, dimension_deviation_rate, surface_defect_rate,
+            mechanical_pass_rate, chemical_pass_rate, coil_downgrade_rate,
+            defect_top_categories, rework_cost_amount, cost_of_poor_quality,
+            supplier_quality_pass, iqc_reject_rate]
+  summary_kpis: [ftq, mechanical_pass_rate, coil_downgrade_rate, customer_complaint_count]
+  briefing_cards: [SUMMARY, INSIGHT, ANOMALY]
+  recommended_questions:
+    - 一次合格率
+    - 化学成分合格率
+    - 力学性能合格率
+    - 钢卷降级率
+    - 表面缺陷 Top
+    - 客诉清单
+    - 来料拒收率
+    - 8D 关闭率
+    - 重量偏差率
+    - 质量成本 COPQ
+  default_dashboard: /pages/dashboard/qc
+
+- pack_id: PK_MILL_ENERGY_MGR
+  name: 能源经理包
+  business_line: MILL
+  role_code: ENERGY_MGR
+  metrics: [energy_per_ton]    # 加水/电/煤气子项 (后续扩)
+  summary_kpis: [energy_per_ton]
+  briefing_cards: [SUMMARY]
+  recommended_questions:
+    - 今日吨钢综合能耗
+    - 各产线能耗对比
+    - 本月对比上月
+    - 能耗最高的工序
+    - 水电气消耗
+    - 能耗趋势
+    - 节能目标完成率
+    - 峰谷电使用
+    - 余热回收
+    - 碳排放
+  default_dashboard: /pages/dashboard/energy

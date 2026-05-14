@@ -1,0 +1,65 @@
+## 通用包: ADMIN / DATA_STEWARD / AUDITOR
+
+- pack_id: PK_COMMON_ADMIN
+  name: 系统管理员包
+  business_line: ALL
+  role_code: ADMIN
+  metrics: ALL
+  summary_kpis: [sales_amount, inv_amount, oee, net_margin]
+  briefing_cards: [SUMMARY]
+  recommended_questions:
+    - 本月各租户用量
+    - 用户活跃度
+    - 配置变更记录
+    - 失败的 ETL 任务
+    - 系统错误日志
+    - 余额低于阈值的租户
+    - 今日推送数量
+    - 服务可用率
+    - 数据质量事件
+    - 待处理审批
+  default_dashboard: /pages/admin/overview
+
+- pack_id: PK_COMMON_DATA_STEWARD
+  name: 数据负责人包
+  business_line: ALL
+  role_code: DATA_STEWARD
+  metrics: ALL
+  summary_kpis: [sales_amount, inv_amount, gross_profit, ftq]
+  briefing_cards: [SUMMARY, INSIGHT]
+  recommended_questions:
+    - 指标新鲜度异常
+    - 待审批变更申请
+    - 高频调用指标
+    - SLA 失败指标
+    - 未启用的指标
+    - 数据质量事件 Top
+    - 各域调用量
+    - Owner 分布
+    - 指标使用率
+    - 废弃指标清单
+  default_dashboard: /pages/registry/overview
+
+- pack_id: PK_COMMON_AUDITOR
+  name: 审计员包 (只读全部)
+  business_line: ALL
+  role_code: AUDITOR
+  metrics: ALL
+  summary_kpis: [sales_amount, gross_profit, ar_outstanding, customer_capital_occupation]
+  briefing_cards: [SUMMARY]
+  recommended_questions:
+    - 本月销售总额
+    - 应收账款余额
+    - 客户资金占用
+    - 关联交易记录
+    - 客户授信使用率
+    - 套保头寸
+    - 异常交易
+    - 大额支付
+    - 凭证审核
+    - 审计事件
+  default_dashboard: /pages/dashboard/audit
+  ## 仅读, 不能下钻到客户级敏感字段
+  column_masking:
+    - { table: dim_customer, field: bank_account, visibility: HIDDEN }
+    - { table: dim_customer, field: phone, visibility: MASKED, mask: '138****####' }

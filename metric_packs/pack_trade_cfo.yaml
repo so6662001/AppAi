@@ -1,0 +1,68 @@
+pack_id: PK_TRADE_CFO
+name: CFO 包-钢贸
+description: 财务总监视角, 净利/应收应付/资金占用/客户 IRR
+business_line: TRADE
+role_code: CFO
+
+metrics:
+  - sales_amount
+  - gross_profit
+  - gross_margin
+  - ton_gross_profit
+  - cogs_amount
+  - listed_gross_profit
+  - other_income_amount
+  - processing_fee_income
+  - delivery_fee_income
+  - financing_interest_income
+  - hedge_realized_pnl
+  - other_expense_amount
+  - delivery_fee_expense
+  - storage_fee_expense
+  - capital_cost_expense
+  - intermediary_fee_expense
+  - claim_compensation_expense
+  - contribution_margin
+  - net_profit
+  - net_margin
+  - ton_net_profit
+  - ar_outstanding
+  - ar_overdue_amount
+  - dso
+  - ap_outstanding
+  - dpo
+  - customer_capital_occupation
+  - customer_capital_days
+  - customer_capital_cost
+  - customer_irr
+  - customer_ton_net_profit
+  - customer_gp_per_capital
+  - credit_utilization_rate
+  - credit_overlimit_amount
+  - ar_aging_overdue_rate
+
+summary_kpis:
+  - net_margin
+  - ar_outstanding
+  - customer_capital_occupation
+  - ar_aging_overdue_rate
+
+briefing_cards: [SUMMARY, RISK, CAPITAL, INSIGHT]
+
+recommended_questions:
+  - 本月净利润对比上月
+  - 应收账款余额
+  - 资金占用最高的客户
+  - 客户 IRR 排名
+  - 逾期应收占比
+  - 哪些客户授信使用率超限
+  - 本月套保已实现盈亏
+  - 上月期间费用分布
+  - 客户级吨净利 Top10
+  - 应付账款周转天数
+
+default_subscriptions:
+  - TPL_CFO_MONTHLY_PROFIT
+  - TPL_CFO_WEEKLY_AR
+
+default_dashboard: /pages/dashboard/cfo

@@ -1,0 +1,68 @@
+pack_id: PK_TRADE_WH_MANAGER
+name: 仓库经理包-钢贸
+description: 库存/库龄/周转/仓库利用率, 自己管的仓库
+business_line: TRADE
+role_code: WH_MANAGER
+
+metrics:
+  - inv_tonnage
+  - inv_amount
+  - inv_skus
+  - inv_coils_count
+  - daily_inv_tonnage
+  - daily_inv_amount
+  - avg_inv_tonnage
+  - avg_inv_amount
+  - inv_turnover_ratio_by_tonnage
+  - inv_turnover_days
+  - avg_aging_days
+  - aging_0_30_amount
+  - aging_31_90_amount
+  - aging_91_180_amount
+  - aging_181_365_amount
+  - aging_365_plus_amount
+  - slow_moving_amount
+  - consigned_inv_amount
+  - inv_loss_rate
+  - inv_yard_utilization
+  - safety_stock_breach_count
+  - avg_pieces_per_pile
+  - inflow_tonnage
+  - outflow_tonnage
+  - net_change_tonnage
+  - inflow_outflow_ratio
+  - inventory_loss_tonnage
+  - long_tail_inv_amount
+  - dead_stock_amount
+
+summary_kpis:
+  - inv_tonnage
+  - inv_turnover_days
+  - aging_365_plus_amount
+  - inv_yard_utilization
+
+briefing_cards: [SUMMARY, INSIGHT, ABC, ADVICE]
+
+recommended_questions:
+  - 我管的仓库当前库存
+  - 库龄一年以上的物料清单
+  - 库存周转天数
+  - 仓库利用率
+  - 本月入库/出库
+  - 死货库存金额
+  - 缺货预警 SKU
+  - 平均堆码件数
+  - 长尾 SKU 占比
+  - 本周盘亏盘盈
+
+default_subscriptions:
+  - TPL_WH_WEEKLY_INVENTORY
+default_dashboard: /pages/dashboard/warehouse
+
+row_acl_default:
+  resource: warehouse
+  rule: "warehouse_id IN :my_warehouses"
+
+column_masking:
+  - { table: dwd_inv_balance, field: unit_cost, visibility: HIDDEN }
+  - { table: dws_inv_daily_snapshot, field: avg_cost_price, visibility: HIDDEN }

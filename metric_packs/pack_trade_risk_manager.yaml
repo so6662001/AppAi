@@ -1,0 +1,45 @@
+pack_id: PK_TRADE_RISK_MANAGER
+name: 风控经理包-钢贸
+description: 客户授信/敞口/风险评分/套保净敞口
+business_line: TRADE
+role_code: RISK_MANAGER
+
+metrics:
+  - credit_utilization_rate
+  - credit_overlimit_amount
+  - customer_exposure_amount
+  - customer_exposure_top
+  - origin_exposure_tonnage
+  - origin_exposure_top
+  - hedge_net_exposure
+  - hedge_net_exposure_breach
+  - ar_outstanding
+  - ar_overdue_amount
+  - ar_aging_overdue_rate
+  - customer_risk_score
+  - customer_capital_occupation
+  - customer_capital_days
+
+summary_kpis:
+  - credit_overlimit_amount
+  - hedge_net_exposure
+  - ar_aging_overdue_rate
+  - customer_risk_score
+
+briefing_cards: [SUMMARY, RISK, INSIGHT]
+
+recommended_questions:
+  - 哪些客户授信使用率超 95%
+  - 本月新增逾期客户
+  - 套保净敞口是否超限
+  - 客户风险评分 Top10
+  - 单产地敞口集中度
+  - Top10 客户敞口
+  - 哪些客户分险评分上升
+  - 本季度坏账核销
+  - 客户授信使用率分布
+  - 风险事件清单
+
+default_subscriptions:
+  - TPL_RISK_DAILY_CREDIT
+default_dashboard: /pages/dashboard/risk

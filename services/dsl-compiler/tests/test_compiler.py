@@ -179,3 +179,50 @@ def test_sensitive_metric_multiplier(compiler, ctx_trade):
     r1 = compiler.compile(dsl_normal, ctx_trade)
     r2 = compiler.compile(dsl_hi, ctx_trade)
     assert r2.biz_token_estimate > r1.biz_token_estimate
+
+
+# ============= 角色化指标包 & 权限 =============
+
+def test_metric_in_pack_passes(compiler, ctx_trade):
+    """用户角色包内的指标可以查."""
+    ctx_trade.allowed_metrics = ["sales_amount", "sales_tonnage"]
+    ctx_trade.primary_role = "SALES_REP"
+    dsl = DSL(metrics=["sales_amount"], time=DSLTime(preset="yesterday"))
+    r = compiler.compile(dsl, ctx_trade)
+    assert r.sql
+
+
+def test_metric_out_of_pack_rejected(compiler, ctx_trade):
+    """不在角色包内的指标拒绝."""
+    ctx_trade.allowed_metrics = ["sales_amount"]    # 业务员只能看销售额
+    ctx_trade.primary_role = "SALES_REP"
+    dsl = DSL(metrics=["customer_irr"], time=DSLTime(preset="last_month"))
+    with pytest.raises(CompileError) as ei:
+        compiler.compile(dsl, ctx_trade)
+    assert ei.value.code == "E_METRIC_OUT_OF_PACK"
+
+
+def test_all_metrics_pack(compiler, ctx_trade):
+    """老板 __ALL__ 表示全部可见."""
+    ctx_trade.allowed_metrics = ["__ALL__"]
+    ctx_trade.primary_role = "OWNER"
+    dsl = DSL(metrics=["net_profit", "customer_irr"], time=DSLTime(preset="last_month", grain="month"))
+    r = compiler.compile(dsl, ctx_trade)
+    assert r.sql
+
+
+def test_auth_required_passes_with_scope(compiler, ctx_trade):
+    """有 finance.profit.read scope 可以查 net_profit."""
+    ctx_trade.allowed_metrics = ["__ALL__"]
+    ctx_trade.scopes = ["sales.read", "finance.profit.read"]
+    dsl = DSL(metrics=["net_profit"], time=DSLTime(preset="last_month", grain="month"))
+    r = compiler.compile(dsl, ctx_trade)
+    assert r.sql
+
+
+def test_empty_allowed_metrics_means_unrestricted(compiler, ctx_trade):
+    """allowed_metrics=None (老调用兼容) 不限制."""
+    ctx_trade.allowed_metrics = None
+    dsl = DSL(metrics=["sales_amount"], time=DSLTime(preset="yesterday"))
+    r = compiler.compile(dsl, ctx_trade)
+    assert r.sql

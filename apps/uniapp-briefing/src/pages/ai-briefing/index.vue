@@ -8,6 +8,18 @@ import BriefingFeed from '@/components/briefing/BriefingFeed.vue';
 const store = useBriefingStore();
 
 onLoad(async () => {
+  // 未完成 Onboarding 自动跳引导
+  try {
+    const r = await uni.request({
+      url: (import.meta.env.VITE_REGISTRY_API || 'https://api.steel-erp.com/api/registry/v1')
+           + '/user/preferences',
+      header: { Authorization: `Bearer ${uni.getStorageSync('jwt') || ''}` },
+    });
+    if (r.data && !(r.data as any).onboarding_done) {
+      uni.reLaunch({ url: '/pages/onboarding/wizard' });
+      return;
+    }
+  } catch {}
   await store.loadToday();
 });
 
