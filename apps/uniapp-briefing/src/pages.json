@@ -11,7 +11,8 @@
     { "path": "pages/scheduled-report/templates", "style": { "navigationBarTitleText": "报表模板" } },
     { "path": "pages/scheduled-report/runs",      "style": { "navigationBarTitleText": "执行历史" } },
     { "path": "pages/ai/chat",                    "style": { "navigationBarTitleText": "AI 经营助手" } },
-    { "path": "pages/onboarding/wizard",          "style": { "navigationBarTitleText": "欢迎使用", "navigationStyle": "custom" } }
+    { "path": "pages/onboarding/wizard",          "style": { "navigationBarTitleText": "欢迎使用", "navigationStyle": "custom" } },
+    { "path": "pages/commission/index",           "style": { "navigationBarTitleText": "我的提成" } }
   ],
   "globalStyle": {
     "navigationBarBackgroundColor": "#ffffff",

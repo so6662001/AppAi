@@ -1,0 +1,48 @@
+pack_id: PK_SHELL_BROKER
+name: 业务员包-皮包/撮合
+description: 撮合业务员/中介视角 - 关注个人差价收益与客户回款
+business_line: SHELL
+role_code: BROKER
+
+metrics:
+  - sales_amount
+  - sales_tonnage
+  - listed_gross_profit
+  - spread_per_ton
+  - ton_gross_profit
+  - my_ar_amount
+  - my_customers_count
+  - my_active_customers
+  - commission_calc        # 个人本月已计提
+  - commission_final       # 个人本月最终
+  - rep_net_contribution
+  - my_kickback_out        # 我为客户让出的返点
+  - my_biz_fee_amt
+  - new_customer_count
+
+summary_kpis:
+  - listed_gross_profit
+  - commission_calc
+  - my_ar_amount
+  - spread_per_ton
+
+briefing_cards:
+  - SUMMARY
+  - COMMISSION_SUMMARY
+  - MY_CUSTOMER_AR
+  - ADVICE
+
+recommended_questions:
+  - 我本月撮合多少吨
+  - 我本月毛利多少
+  - 我本月计提多少提成
+  - 我哪些客户未回款
+  - 我这个月业务费用了多少
+  - 我手上有几个活跃客户
+  - 我对比同事的业绩
+  - 哪个客户给我贡献最多
+
+default_subscriptions:
+  - TPL_SHELL_REP_DAILY
+
+default_dashboard: /pages/dashboard/shell_broker

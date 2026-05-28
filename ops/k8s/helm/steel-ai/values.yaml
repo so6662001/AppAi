@@ -74,6 +74,12 @@ services:
     enabled: true
     replicas: 1
     port: 8700
+  commission-service:
+    enabled: true
+    replicas: 1
+    port: 8950
+    env:
+      DB_URL_GOV: mysql+pymysql://root:steeldev@mysql:3306/steel_governance?charset=utf8mb4
 
 # 基础设施
 mysql:

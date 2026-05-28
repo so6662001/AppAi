@@ -54,6 +54,11 @@ spring:
         - id: forecast
           uri: ${FORECAST_URL:http://forecast-service:8400}
           predicates: [Path=/v1/forecast/**]
+        - id: commission
+          uri: ${COMMISSION_URL:http://commission-service:8950}
+          predicates: [Path=/v1/commission/**]
+          filters:
+            - RewritePath=/v1/commission/(?<seg>.*), /v1/$\{seg}
 
 auth:
   jwt-secret: ${JWT_SECRET:change-me-to-a-strong-secret-at-least-32-bytes-long}

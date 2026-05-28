@@ -229,6 +229,18 @@ services:
       - METRICS_DIR=/app/metrics
     restart: unless-stopped
 
+  # ----------------------- 提成引擎 (Python) -----------------------
+  commission-service:
+    build: ./services/commission-service
+    container_name: steel-commission
+    ports:
+      - "8960:8950"     # 暴露 8960 避免和 rag-service 冲突
+    environment:
+      - DB_URL_GOV=mysql+pymysql://root:steeldev@mysql:3306/steel_governance?charset=utf8mb4
+      - TZ=Asia/Shanghai
+    depends_on: [mysql]
+    restart: unless-stopped
+
   # ----------------------- 预测 (Python) -----------------------
   forecast-service:
     build:

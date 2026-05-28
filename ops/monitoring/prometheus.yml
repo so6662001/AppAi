@@ -53,6 +53,8 @@ scrape_configs:
     static_configs: [{ targets: [data-quality-monitor:8900] }]
   - job_name: rag-service
     static_configs: [{ targets: [rag-service:8950] }]
+  - job_name: commission-service
+    static_configs: [{ targets: [commission-service:8950] }]
 
   # 基础设施
   - job_name: mysql-exporter

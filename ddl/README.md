@@ -14,6 +14,16 @@
 08_billing.sql                 计费 (MySQL): 套餐/钱包/订阅/预扣/用量/账本/对账
 09_chat_session.sql            聊天 (MySQL): 会话/消息/反馈/推荐问题
 10_materialized_views.sql      StarRocks 异步物化视图加速高频查询
+11_briefing.sql                AI 早报模板与历史
+12_scheduled_reports.sql       定时报表模板/任务/订阅/分发记录
+13_tenant_notify_config.sql    租户通知通道配置 (webhook/SMTP/SMS)
+14_rbac.sql                    RBAC 用户/角色/权限/行级 ACL
+15_metric_pack.sql             角色化指标包 + 用户偏好 + 临时授权 + 权限申请
+16_tenant_config.sql           租户业务模式 + 特性开关 + 提成方案/规则 + 客群/销售员归属
+17_legal_entity.sql            多法人主体 + 关联交易 + 合并抵消
+18_hedge.sql                   期现结合: 锁价/点价/套保头寸/基差/PnL 拆分
+19_biz_expense.sql             业务费/抹零/返点 (暗规则建模, 默认关闭)
+20_financial_statements.sql    标准财务三表 (利润/资产负债/现金流) + 员工净贡献
 ```
 
 ## 数据库分布
@@ -53,4 +63,17 @@ mysql -h fe-host -P 9030 -u root -p < 10_materialized_views.sql
 mysql -h mysql-host -u root -p < 07_governance.sql
 mysql -h mysql-host -u root -p < 08_billing.sql
 mysql -h mysql-host -u root -p < 09_chat_session.sql
+mysql -h mysql-host -u root -p < 11_briefing.sql
+mysql -h mysql-host -u root -p < 12_scheduled_reports.sql
+mysql -h mysql-host -u root -p < 13_tenant_notify_config.sql
+mysql -h mysql-host -u root -p < 14_rbac.sql
+mysql -h mysql-host -u root -p < 15_metric_pack.sql
+mysql -h mysql-host -u root -p < 16_tenant_config.sql   # 多租户 + 提成 + 客群
+mysql -h mysql-host -u root -p < 19_biz_expense.sql     # 暗规则上限规则部分
+
+# StarRocks (新增的多主体/期现/财务报表)
+mysql -h fe-host -P 9030 -u root -p < 17_legal_entity.sql
+mysql -h fe-host -P 9030 -u root -p < 18_hedge.sql
+mysql -h fe-host -P 9030 -u root -p < 19_biz_expense.sql   # fact_biz_expense 部分
+mysql -h fe-host -P 9030 -u root -p < 20_financial_statements.sql
 ```
