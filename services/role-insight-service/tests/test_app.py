@@ -123,3 +123,33 @@ def test_demo_snapshot_finance():
     assert r.status_code == 200
     d = r.json()
     assert d["finding_count"] >= 2
+
+
+def test_demo_snapshot_sales_mgr():
+    r = client.get("/v1/demo/snapshot/TRADE_SALES_MGR")
+    assert r.status_code == 200
+    d = r.json()
+    assert d["role_code"] == "TRADE_SALES_MGR"
+    assert d["finding_count"] >= 3
+    high_titles = [f["title"] for f in d["findings"] if f["severity"] == "HIGH"]
+    assert any("Top" in t or "团队" in t for t in high_titles)
+
+
+def test_demo_snapshot_purchasing_mgr():
+    r = client.get("/v1/demo/snapshot/TRADE_PURCHASING_MGR")
+    assert r.status_code == 200
+    d = r.json()
+    assert d["role_code"] == "TRADE_PURCHASING_MGR"
+    assert d["finding_count"] >= 4
+    assert d["high_count"] >= 2
+    titles = [f["title"] for f in d["findings"]]
+    assert any("买贵" in t or "采购均价" in t or "上游" in t for t in titles)
+
+
+def test_list_roles_includes_new():
+    """新加的 2 个岗位应在 list 中可见."""
+    r = client.get("/v1/roles")
+    assert r.status_code == 200
+    codes = [x["role_code"] for x in r.json()]
+    assert "TRADE_SALES_MGR" in codes
+    assert "TRADE_PURCHASING_MGR" in codes

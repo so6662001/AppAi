@@ -58,7 +58,17 @@ INSERT INTO role_profile (role_code, role_name, business_line, level, focus_area
     JSON_ARRAY('inventory','aging','quality'),
     JSON_ARRAY('inv_amount','inv_turnover_days','aged_inv_pct','damage_loss_pct','count_accuracy'),
     JSON_OBJECT('inv_amount',0.20,'inv_turnover_days',0.30,'aged_inv_pct',0.25,'damage_loss_pct',0.15,'count_accuracy',0.10),
-    '仓库主管: 看周转, 看库龄, 看准确率')
+    '仓库主管: 看周转, 看库龄, 看准确率'),
+  ('TRADE_SALES_MGR',   '销售部经理',   'TRADE',  'MANAGER',
+    JSON_ARRAY('team','customer','revenue','growth'),
+    JSON_ARRAY('team_revenue','team_ton_gross_profit','team_active_customer_count','team_avg_commission','team_attrition_risk','team_new_customer_count'),
+    JSON_OBJECT('team_revenue',0.20,'team_ton_gross_profit',0.25,'team_active_customer_count',0.15,'team_avg_commission',0.15,'team_attrition_risk',0.15,'team_new_customer_count',0.10),
+    '销售部经理: 看小团队 (3-8 人), 关注产出+员工成长+客户结构'),
+  ('TRADE_PURCHASING_MGR','采购经理',  'TRADE',  'MANAGER',
+    JSON_ARRAY('price','supplier','inventory','payment','quality'),
+    JSON_ARRAY('purchase_price_vs_index','top1_supplier_share','dpo_days','iqc_pass_rate','prepay_balance','hedge_match_pct','inv_turnover_days'),
+    JSON_OBJECT('purchase_price_vs_index',0.25,'top1_supplier_share',0.15,'dpo_days',0.15,'iqc_pass_rate',0.10,'prepay_balance',0.10,'hedge_match_pct',0.15,'inv_turnover_days',0.10),
+    '采购经理: 钢贸利润源头 - 买价/集中度/账期/对冲匹配')
 ON DUPLICATE KEY UPDATE role_name=VALUES(role_name), focus_areas=VALUES(focus_areas);
 
 -- ============================================================

@@ -131,6 +131,10 @@ def demo_snapshot(role_code: str):
         ctx = _demo_ctx_owner(profile)
     elif role_code == "FINANCE_CTRL":
         ctx = _demo_ctx_finance(profile)
+    elif role_code == "TRADE_SALES_MGR":
+        ctx = _demo_ctx_sales_mgr(profile)
+    elif role_code == "TRADE_PURCHASING_MGR":
+        ctx = _demo_ctx_purchasing_mgr(profile)
     else:
         raise HTTPException(404, f"no demo for {role_code}")
     snap = engine.diagnose(ctx)
@@ -203,6 +207,79 @@ def _demo_ctx_owner(profile: RoleProfileDef) -> InsightContext:
             "ratio": 0.18, "risk_amount": 58_000, "max_swing": 180, "worst": 104_000,
             "capital_per_day": 280_000, "interest": 4_600_000,
             "biz_fee_amt": 8_420, "top1_supplier_name": "沙钢", "affected_tonnage": 2300,
+        },
+    )
+
+
+def _demo_ctx_sales_mgr(profile: RoleProfileDef) -> InsightContext:
+    """演示: 销售部经理 - 团队 5 人, Top1 销售员业绩下滑."""
+    return InsightContext(
+        tenant_id=1, user_id=3, role_code="TRADE_SALES_MGR",
+        period_month="2026-05",
+        profile=profile,
+        kpi_values={
+            "team_revenue": 6_820_000,
+            "team_ton_gross_profit": 168,
+            "team_active_customer_count": 38,
+            "team_avg_commission": 12_400,
+            "team_attrition_risk": 0.38,
+            "team_new_customer_count": 3,
+            # 触发条件用变量
+            "company_avg_ton_gross_profit": 186,
+            "top1_rep_revenue_mom_pct": -0.28,
+            "team_aged_ar_mom_pct": 0.22,
+            "team_top5_customer_share": 0.68,
+            "team_new_customer_count_qtr": 4,
+            "team_size": 5,
+            "team_commission_top_bot_ratio": 6.2,
+        },
+        benchmarks={
+            "team_ton_gross_profit": {"p25":120,"p50":165,"p75":215,"top10":280,"direction":"HIGHER"},
+        },
+        peer_avgs={},
+        extras={
+            "company_avg": 186, "gap_pct": 0.10, "potential": 124_000, "commission_gain": 28_000,
+            "top1_rep_name": "王某", "top1_rep_share": 0.32, "drop_reason": "Top1 客户江某机械暂停下单",
+            "team_aged_ar": 480_000, "top_aged_reps": "林某/钱某", "risk_amount": 144_000,
+            "at_risk_count": 2, "cost_per_attrition": 80_000,
+            "top5_amount": 4_640_000, "avg_new_per_rep": 0.8,
+            "top_commission": 24_800, "bot_commission": 4_000, "ratio": 6.2,
+        },
+    )
+
+
+def _demo_ctx_purchasing_mgr(profile: RoleProfileDef) -> InsightContext:
+    """演示: 采购经理 - 买价偏高 + 上游集中 + 对冲缺口."""
+    return InsightContext(
+        tenant_id=1, user_id=4, role_code="TRADE_PURCHASING_MGR",
+        period_month="2026-05",
+        profile=profile,
+        kpi_values={
+            "purchase_price_vs_index": 52,        # 高出指数 52 元
+            "top1_supplier_share": 0.48,
+            "dpo_days": 22,                       # 应付天数
+            "iqc_pass_rate": 0.948,
+            "prepay_balance": 18_200_000,
+            "hedge_match_pct": 0.62,
+            "inv_turnover_days": 56,
+            "month_tons": 4820,
+            "inv_tonnage": 8200,
+            "hedge_tonnage": 5100,
+            "prepay_threshold": 10_000_000,
+        },
+        benchmarks={
+            "dpo_days":           {"p25":15,"p50":28,"p75":42,"top10":55,"direction":"HIGHER"},
+            "inv_turnover_days":  {"p25":56,"p50":42,"p75":28,"top10":18,"direction":"LOWER"},
+        },
+        peer_avgs={},
+        extras={
+            "extra_cost": 250_640, "gp_impact_pct": 0.18,
+            "top1_supplier_name": "沙钢", "top1_supplier_amount": 22_400_000,
+            "affected_tonnage": 2300,
+            "p50": 28, "gap": -6, "extra_capital": 8_400_000, "interest": 378_000,
+            "fail_count": 8, "worst_supplier": "永钢系", "complaint_count": 3,
+            "gap_tonnage": 3100, "risk_amount": 310_000,
+            "storage_cost": 84_000,
         },
     )
 

@@ -1,0 +1,114 @@
+## ============================================================
+## 钢贸销售部经理 (TRADE_SALES_MGR) 岗位画像
+## 介于销售总监 (Director) 和销售员 (Rep) 之间的中层
+## 负责一个区域/产品线 3-8 个销售员, 看团队 + 客户 + 员工成长
+## ============================================================
+role_code: TRADE_SALES_MGR
+role_name: 销售部经理
+business_line: TRADE
+level: MANAGER
+focus_areas: [team, customer, revenue, growth]
+
+primary_kpis:
+  - {code: team_revenue,                weight: 0.20, direction: HIGHER, label: 团队销售额}
+  - {code: team_ton_gross_profit,       weight: 0.25, direction: HIGHER, label: 团队加权吨毛利, benchmark: true}
+  - {code: team_active_customer_count,  weight: 0.15, direction: HIGHER, label: 团队活跃客户数}
+  - {code: team_avg_commission,         weight: 0.15, direction: HIGHER, label: 团队人均提成}
+  - {code: team_attrition_risk,         weight: 0.15, direction: LOWER,  label: 人员流失风险评分}
+  - {code: team_new_customer_count,     weight: 0.10, direction: HIGHER, label: 团队新增客户}
+
+rules:
+  - id: SM_TGP_BELOW_COMPANY
+    category: WEAKNESS
+    severity: HIGH
+    title: 团队吨毛利低于公司均值
+    when: "team_ton_gross_profit < company_avg_ton_gross_profit * 0.90"
+    finding: "您团队加权吨毛利 {team_ton_gross_profit:.0f} 元, 公司均值 {company_avg:.0f} 元, 差距 {gap_pct:.0%}"
+    impact: "若达公司均值, 团队月毛利可多 {potential:,.0f} 元 (≈ 团队提成池涨 {commission_gain:,.0f})"
+    actions:
+      - {label: AI 拆销售员差异, type: chat, prompt: "我团队哪些销售员拉低均值? 给具体辅导建议"}
+      - {label: 看销售员排行, type: navigate, path: /role-insight/team}
+    score_impact: 16
+
+  - id: SM_TOP_REP_DROP
+    category: RISK
+    severity: HIGH
+    title: 团队 Top 销售员业绩骤降
+    when: "top1_rep_revenue_mom_pct < -0.20"
+    finding: "{top1_rep_name} 是您团队 Top 1, 本月销售环比 {top1_rep_revenue_mom_pct:.0%}, 主要因 {drop_reason}"
+    impact: "Top 1 占团队 {top1_rep_share:.0%}, 若不挽回下月团队营收预计 -{potential:,.0f}"
+    actions:
+      - {label: 立即 1v1 沟通, type: action, handler: schedule1v1}
+      - {label: 看该员工详细画像, type: navigate, path: "/role-insight-sales-rep.html"}
+    score_impact: 18
+
+  - id: SM_TEAM_AGED_AR
+    category: RISK
+    severity: HIGH
+    title: 团队老应收增长过快
+    when: "team_aged_ar_mom_pct > 0.15"
+    finding: "团队 181+ 应收环比 +{team_aged_ar_mom_pct:.0%} ({team_aged_ar:,.0f} 元), 集中在 {top_aged_reps}"
+    impact: "潜在坏账 {risk_amount:,.0f}, 影响您年终考核 + 团队提成池"
+    actions:
+      - {label: 启动催收专项, type: action, handler: launchDunningCampaign}
+      - {label: 按销售员拆账龄, type: navigate, path: "/drilldown?metric=team_aged_ar&dim=rep"}
+    score_impact: 12
+
+  - id: SM_ATTRITION_RISK
+    category: RISK
+    severity: MEDIUM
+    title: 团队人员存在流失风险
+    when: "team_attrition_risk > 0.30"
+    finding: "团队中 {at_risk_count} 个销售员健康度连续 2 月 < 50, 流失风险评分 {team_attrition_risk:.0%}"
+    impact: "若流失, 客户交接 + 培养新人成本约 {cost_per_attrition:,.0f}/人"
+    actions:
+      - {label: 看高风险员工, type: navigate, path: "/role-insight/team?filter=at_risk"}
+      - {label: AI 提改善建议, type: chat, prompt: "我团队流失风险高, 怎么稳住?"}
+    score_impact: 12
+
+  - id: SM_TEAM_CUST_CONC
+    category: RISK
+    severity: MEDIUM
+    title: 团队客户高度集中
+    when: "team_top5_customer_share > 0.65"
+    finding: "Top 5 客户占团队营收 {team_top5_customer_share:.0%} ({top5_amount:,.0f})"
+    impact: "若 Top1 客户停单, 团队下月营收预计 -{potential:,.0f}"
+    actions:
+      - {label: 看客户分布, type: navigate, path: "/drilldown?metric=team_revenue&dim=customer"}
+      - {label: AI 推荐潜在客户, type: chat, prompt: "我团队该开发哪类新客户分散风险?"}
+    score_impact: 10
+
+  - id: SM_NEW_CUST_STAGNANT
+    category: OPPORTUNITY
+    severity: MEDIUM
+    title: 团队新客户开发停滞
+    when: "team_new_customer_count_qtr < team_size * 0.5"
+    finding: "本季团队 {team_size} 人, 仅新增 {team_new_customer_count_qtr} 个客户, 人均 {avg_new_per_rep:.1f} 个"
+    impact: "客户池缩水, 6 个月后预计营收下滑 {potential:,.0f}"
+    actions:
+      - {label: 看每人新客户数, type: navigate, path: "/drilldown?metric=team_new_customer&dim=rep"}
+      - {label: AI 推荐潜在客户清单, type: chat, prompt: "结合团队产品组合, 推荐 20 个潜在客户"}
+    score_impact: 8
+
+  - id: SM_COMMISSION_GAP_LARGE
+    category: WEAKNESS
+    severity: MEDIUM
+    title: 团队提成差异过大 (Top/Bot 5 倍)
+    when: "team_commission_top_bot_ratio > 5.0"
+    finding: "团队 Top 提成 {top_commission:,.0f}, Bottom {bot_commission:,.0f}, 倍数 {ratio:.1f}x"
+    impact: "后进员工容易流失, 团队稳定性差"
+    actions:
+      - {label: 看后 30% 销售员, type: navigate, path: "/role-insight/team?orderby=bottom"}
+      - {label: 安排针对性辅导, type: action, handler: schedule1v1}
+    score_impact: 8
+
+routines:
+  - "查看团队日报"
+  - "查看 Top 客户健康度"
+  - "查看团队成员状态 (流失风险)"
+  - "查看本月团队提成预计"
+
+education:
+  - topic: 怎么辅导后 30% 销售员
+  - topic: 怎么稳住高潜员工 (流失干预)
+  - topic: 团队客户分配最佳实践

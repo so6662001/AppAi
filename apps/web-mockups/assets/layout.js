@@ -12,7 +12,9 @@
     ]},
     { group: '我的画像 · 智能教练', items: [
       { ico: '👑', label: '老板画像',         href: 'role-insight-owner.html' },
+      { ico: '🎯', label: '销售部经理画像',   href: 'role-insight-sales-mgr.html' },
       { ico: '🤝', label: '销售员画像',       href: 'role-insight-sales-rep.html' },
+      { ico: '🏭', label: '采购经理画像',     href: 'role-insight-purchasing-mgr.html' },
       { ico: '💼', label: '财务总监画像',     href: 'role-insight-finance.html' },
     ]},
     { group: '报表与预测', items: [

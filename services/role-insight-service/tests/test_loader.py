@@ -14,7 +14,23 @@ def setup_module():
 
 def test_load_all_returns_six_or_more():
     profiles = loader.load_all()
-    assert len(profiles) >= 5
+    assert len(profiles) >= 7   # 现共 7+ 个岗位 (含销售部经理 + 采购经理)
+
+
+def test_get_profile_sales_mgr():
+    p = loader.get_profile("TRADE_SALES_MGR")
+    assert p is not None
+    assert p.role_name == "销售部经理"
+    assert p.level == "MANAGER"
+    assert len(p.rules) >= 5
+
+
+def test_get_profile_purchasing_mgr():
+    p = loader.get_profile("TRADE_PURCHASING_MGR")
+    assert p is not None
+    assert p.role_name == "采购经理"
+    assert len(p.primary_kpis) >= 6
+    assert len(p.rules) >= 6
 
 
 def test_get_profile_trade_owner():
