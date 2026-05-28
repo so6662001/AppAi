@@ -8,6 +8,12 @@
       { ico: '🏠', label: '老板看板',         href: 'dashboard-owner.html' },
       { ico: '📰', label: 'AI 经营早报',       href: 'ai-briefing.html', badge: '3' },
       { ico: '💬', label: 'AI 经营助手',       href: 'ai-chat.html' },
+      { ico: '🔬', label: '指标钻取',         href: 'metric-drilldown.html' },
+    ]},
+    { group: '我的画像 · 智能教练', items: [
+      { ico: '👑', label: '老板画像',         href: 'role-insight-owner.html' },
+      { ico: '🤝', label: '销售员画像',       href: 'role-insight-sales-rep.html' },
+      { ico: '💼', label: '财务总监画像',     href: 'role-insight-finance.html' },
     ]},
     { group: '报表与预测', items: [
       { ico: '📊', label: '财务三表',         href: 'finance-statements.html' },

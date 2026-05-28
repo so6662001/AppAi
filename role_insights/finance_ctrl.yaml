@@ -1,0 +1,113 @@
+## ============================================================
+## 财务总监 (FINANCE_CTRL) 岗位画像
+## ============================================================
+role_code: FINANCE_CTRL
+role_name: 财务总监
+business_line: ALL
+level: MANAGER
+focus_areas: [finance, risk, compliance, dark_rule]
+
+primary_kpis:
+  - {code: current_ratio,           weight: 0.10, direction: HIGHER, label: 流动比率, benchmark: true}
+  - {code: debt_to_asset,           weight: 0.20, direction: LOWER,  label: 资产负债率, benchmark: true}
+  - {code: ccc_days,                weight: 0.20, direction: LOWER,  label: 现金循环天, benchmark: true}
+  - {code: ar_aging_181_365_pct,    weight: 0.15, direction: LOWER,  label: 老应收占比}
+  - {code: biz_fee_to_gp_ratio,     weight: 0.15, direction: LOWER,  label: 业务费占毛利}
+  - {code: intercompany_eliminate_match_pct, weight: 0.10, direction: HIGHER, label: 关联交易对账完整度}
+  - {code: cf_operating,            weight: 0.10, direction: HIGHER, label: 经营现金流}
+
+rules:
+  - id: FIN_DEBT_HIGH
+    category: WEAKNESS
+    severity: HIGH
+    title: 资产负债率过高
+    when: "debt_to_asset > benchmark('TRADE','debt_to_asset').p50"
+    finding: "负债率 {debt_to_asset:.0%}, 行业中位 {p50:.0%}, 高 {gap:.1%}"
+    impact: "授信触发预警的概率上升, 利率议价能力下降"
+    actions:
+      - {label: 看负债结构, type: navigate, path: "/finance-statements?tab=balance-sheet"}
+      - {label: AI 提优化方案, type: chat, prompt: "如何降低负债率?"}
+    score_impact: 16
+
+  - id: FIN_CCC_HIGH
+    category: WEAKNESS
+    severity: MEDIUM
+    title: 现金循环天数高于行业
+    when: "ccc_days > benchmark('TRADE','ccc_days').p50"
+    finding: "CCC {ccc_days:.0f} 天, 行业 {p50:.0f} 天, 多占资金 ¥{extra_capital:,.0f}"
+    impact: "年化利息成本 ¥{interest:,.0f}, 等于减少净利 {ratio:.0%}"
+    actions:
+      - {label: 分解 CCC, type: navigate, path: "/drilldown?metric=ccc_days&dim=composition"}
+    score_impact: 12
+
+  - id: FIN_AR_181
+    category: RISK
+    severity: HIGH
+    title: 老应收 (181-365 天) 占比偏高
+    when: "ar_aging_181_365_pct > 0.05"
+    finding: "181-365 天账龄应收 {ar_aging_181_365_pct:.1%} (¥{amt:,.0f})"
+    impact: "按 30% 坏账率计提, 影响利润 ¥{provision:,.0f}"
+    actions:
+      - {label: 看客户清单, type: navigate, path: "/drilldown?metric=ar_aging_181_365_amount&dim=customer"}
+      - {label: 启动催收专项, type: action, handler: launchDunningCampaign}
+    score_impact: 14
+
+  - id: FIN_BIZ_FEE_HIGH
+    category: COMPLIANCE
+    severity: HIGH
+    title: 业务费占毛利比过高
+    when: "biz_fee_to_gp_ratio > 0.10"
+    finding: "业务费占毛利 {biz_fee_to_gp_ratio:.1%}, 健康线 ≤10%"
+    impact: "本月业务费 ¥{biz_fee_amt:,.0f}, 重点检查 Top3 销售员"
+    actions:
+      - {label: 看 Top 销售员, type: navigate, path: "/biz-expense-audit?orderby=top"}
+      - {label: 下调上限规则, type: navigate, path: /biz-expense-audit/limits}
+      - {label: AI 启动审计, type: chat, prompt: "本月业务费有哪些异常?"}
+    score_impact: 12
+
+  - id: FIN_INTERCOMPANY_UNMATCH
+    category: COMPLIANCE
+    severity: MEDIUM
+    title: 关联交易对账有缺口
+    when: "intercompany_eliminate_match_pct < 0.95"
+    finding: "关联交易对账完整度 {intercompany_eliminate_match_pct:.0%}, 缺 {gap_count} 笔未匹配"
+    impact: "合并报表可能虚增/虚减 ¥{potential_amt:,.0f}"
+    actions:
+      - {label: 看未对账明细, type: navigate, path: "/consolidation?filter=unmatched"}
+    score_impact: 10
+
+  - id: FIN_CF_NEGATIVE
+    category: RISK
+    severity: HIGH
+    title: 经营活动现金流连续 2 月为负
+    when: "cf_operating < 0 AND cf_operating_lastmonth < 0"
+    finding: "经营现金流连续 2 月为负, 本月 ¥{cf_operating:,.0f}"
+    impact: "运营资金需要外部融资支撑, 财务风险上升"
+    actions:
+      - {label: 看现金流量表, type: navigate, path: "/finance-statements?tab=cashflow"}
+      - {label: AI 提改善方案, type: chat, prompt: "为什么经营现金流为负? 怎么修?"}
+    score_impact: 18
+
+  - id: FIN_TAX_HIGH
+    category: OPPORTUNITY
+    severity: LOW
+    title: 实际税率高于法定税率
+    when: "actual_tax_rate > legal_tax_rate * 1.10"
+    finding: "实际税率 {actual_tax_rate:.1%}, 法定 {legal_tax_rate:.1%}"
+    impact: "可能未充分用足税收优惠政策, 多缴 ¥{extra_tax:,.0f}"
+    actions:
+      - {label: AI 检查税收优惠, type: chat, prompt: "我有哪些税收优惠没用上?"}
+    score_impact: 6
+
+routines:
+  - "查看现金流日报"
+  - "查看老应收 Top 客户"
+  - "查看业务费/抹零异常"
+  - "查看资产负债健康"
+  - "审批中的合规事项"
+
+education:
+  - topic: 怎么压缩 CCC
+    source: docs/playbook/finance-ccc-reduction.md
+  - topic: 业务费合规红线
+    source: docs/playbook/dark-rule-compliance.md

@@ -27,7 +27,11 @@ npx serve apps/web-mockups
 
 | # | 文件 | 角色 | 关键交互 |
 |---|------|------|---------|
-| 0 | `index.html` | 全员 | 12 张原型缩略图导航 |
+| 0 | `index.html` | 全员 | 16 张原型缩略图导航 |
+| **A** | **`role-insight-owner.html`** | **老板** | 健康度雷达 + 4 域分项 + 6 项 AI 待办 + 行业对标 |
+| **B** | **`role-insight-sales-rep.html`** | **销售员** | 同事 PK + 5 项个性化短板 + 1 对 1 AI 教练 + 个性化学习 |
+| **C** | **`role-insight-finance.html`** | **财务总监** | 7 大 KPI vs 行业 + 5 项合规预警 + AI 财务参谋 |
+| **D** | **`metric-drilldown.html`** | **全员** | 任意指标 → 多维拆分 → 明细钻取 → AI 自动归因 |
 | 1 | `dashboard-owner.html` | 老板 | 4 KPI + 销售/毛利双轴图 + 风险 + 客户资金 Top + 业务员排名 + 库存动因 |
 | 2 | `ai-briefing.html` | 老板 | 6 张早报卡: SUMMARY / 风险 / ADVICE / 期现 / 资金占用 / Token 余额 |
 | 3 | `ai-chat.html` | 全员 | 流式对话 + DSL 编译展示 + 图表+表格 + 追问芯片 + 计费 |
@@ -74,3 +78,5 @@ npx serve apps/web-mockups
 | metric-registry | `metric-registry-service` |
 | tenant-onboarding | `tenant_profile` + `tenant_feature_flag` + 4 模板 |
 | finance-statements | `dws_income_statement_monthly` 等 4 张报表表 |
+| role-insight-* | `role-insight-service` + `role_profile` + `industry_benchmark` + `insight_rule` |
+| metric-drilldown | `role-insight-service.drilldown` + `metric_drilldown_path` |

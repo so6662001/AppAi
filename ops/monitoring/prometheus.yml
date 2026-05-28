@@ -55,6 +55,8 @@ scrape_configs:
     static_configs: [{ targets: [rag-service:8950] }]
   - job_name: commission-service
     static_configs: [{ targets: [commission-service:8950] }]
+  - job_name: role-insight-service
+    static_configs: [{ targets: [role-insight-service:8970] }]
 
   # 基础设施
   - job_name: mysql-exporter

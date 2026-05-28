@@ -59,6 +59,11 @@ spring:
           predicates: [Path=/v1/commission/**]
           filters:
             - RewritePath=/v1/commission/(?<seg>.*), /v1/$\{seg}
+        - id: role-insight
+          uri: ${ROLE_INSIGHT_URL:http://role-insight-service:8970}
+          predicates: [Path=/v1/role-insight/**]
+          filters:
+            - RewritePath=/v1/role-insight/(?<seg>.*), /v1/$\{seg}
 
 auth:
   jwt-secret: ${JWT_SECRET:change-me-to-a-strong-secret-at-least-32-bytes-long}

@@ -1,0 +1,75 @@
+## ============================================================
+## 钢贸销售总监 (TRADE_SALES_DIR) 岗位画像
+## ============================================================
+role_code: TRADE_SALES_DIR
+role_name: 钢贸销售总监
+business_line: TRADE
+level: MANAGER
+focus_areas: [team, commission, customer_health]
+
+primary_kpis:
+  - {code: team_revenue,            weight: 0.20, direction: HIGHER, label: 团队营收}
+  - {code: team_ton_gross_profit,   weight: 0.25, direction: HIGHER, label: 团队加权吨毛利, benchmark: true}
+  - {code: team_active_customer,    weight: 0.15, direction: HIGHER, label: 团队活跃客户}
+  - {code: team_avg_commission,     weight: 0.10, direction: HIGHER, label: 团队人均提成}
+  - {code: commission_to_gp_ratio,  weight: 0.15, direction: LOWER,  label: 提成占毛利比, benchmark: true}
+  - {code: team_aged_ar_pct,        weight: 0.15, direction: LOWER,  label: 团队老应收占比}
+
+rules:
+  - id: SD_TGP_GAP_LARGE
+    category: WEAKNESS
+    severity: HIGH
+    title: 销售员吨毛利差异过大
+    when: "team_tgp_cv > 0.40"
+    finding: "团队吨毛利变异系数 {team_tgp_cv:.0%}, Top {top_tgp:.0f} 元 vs Bottom {bot_tgp:.0f} 元"
+    impact: "若后 30% 销售员达到中位, 团队毛利可多 ¥{potential:,.0f}"
+    actions:
+      - {label: 看销售员排行, type: navigate, path: /role-insight/team}
+      - {label: 安排 1v1 辅导, type: action, handler: schedule1v1}
+    score_impact: 14
+
+  - id: SD_COMMISSION_TOO_HIGH
+    category: COMPLIANCE
+    severity: MEDIUM
+    title: 团队提成占毛利比偏高
+    when: "commission_to_gp_ratio > 0.40"
+    finding: "团队提成占毛利 {commission_to_gp_ratio:.0%}, 健康线 ≤32%"
+    impact: "本月超额支出 ¥{extra_commission:,.0f}, 可能规则被打穿"
+    actions:
+      - {label: 看提成规则匹配, type: navigate, path: /commission-config}
+      - {label: 提交规则微调, type: action, handler: proposeRuleChange}
+    score_impact: 10
+
+  - id: SD_TOP_CUST_DROP
+    category: RISK
+    severity: HIGH
+    title: Top 客户销售骤降
+    when: "top10_customer_revenue_mom_pct < -0.20"
+    finding: "Top10 客户销售环比 {top10_customer_revenue_mom_pct:.0%}, 主要因 {top_drop_customer}"
+    impact: "若不挽回, 下月营收预计 -¥{potential_loss:,.0f}"
+    actions:
+      - {label: 看流失客户, type: navigate, path: "/drilldown?metric=team_revenue&dim=customer&compare=mom"}
+      - {label: AI 给挽回方案, type: chat, prompt: "怎么挽回流失的 Top 客户?"}
+    score_impact: 16
+
+  - id: SD_TEAM_AGED_AR
+    category: RISK
+    severity: HIGH
+    title: 团队老应收暴增
+    when: "team_aged_ar_mom_pct > 0.15"
+    finding: "团队 181+ 应收环比 +{team_aged_ar_mom_pct:.0%} (¥{aged_ar:,.0f})"
+    impact: "潜在坏账 ¥{provision:,.0f}, 影响团队提成池"
+    actions:
+      - {label: 看销售员清单, type: navigate, path: "/drilldown?metric=team_aged_ar&dim=rep"}
+      - {label: 启动催收专项, type: action, handler: launchDunningCampaign}
+    score_impact: 12
+
+routines:
+  - "查看团队日报"
+  - "查看销售员排行"
+  - "查看 Top 客户健康度"
+  - "查看本月提成预计"
+
+education:
+  - topic: 怎么辅导后 30% 销售员
+  - topic: 怎么平衡走量与利润

@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>老板画像 · 健康度与待办</title>
+<link rel="stylesheet" href="./assets/shared.css">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  .hero-card {
+    background: linear-gradient(135deg, #001529 0%, #003a8c 60%, #1677ff 100%);
+    color: #fff; border-radius: 14px; padding: 32px;
+    display: grid; grid-template-columns: 240px 1fr 320px; gap: 36px;
+    box-shadow: var(--shadow-md); margin-bottom: 16px;
+  }
+  .score-ring {
+    width: 220px; height: 220px;
+    background:
+      radial-gradient(closest-side, #001529 65%, transparent 66% 100%),
+      conic-gradient(#52c41a 0% 72%, rgba(255,255,255,.15) 72% 100%);
+    border-radius: 50%;
+    display: grid; place-items: center; position: relative;
+  }
+  .score-ring .v { font-size: 64px; font-weight: 800; line-height: 1; color: #fff; }
+  .score-ring .u { font-size: 14px; color: #a8c7ff; margin-top: 6px; }
+  .score-ring .level { position: absolute; bottom: 24px; left:50%; transform: translateX(-50%); background: var(--success); padding: 2px 12px; border-radius: 12px; font-size: 12px; font-weight: 700; }
+
+  .hero-card .greet { color: #a8c7ff; font-size: 14px; }
+  .hero-card h2 { font-size: 28px; margin: 6px 0 14px; font-weight: 700; }
+  .hero-card .quick-list { display: flex; flex-direction: column; gap: 10px; max-width: 520px; }
+  .hero-card .q { background: rgba(255,255,255,.08); padding: 12px 14px; border-radius: 8px; display: flex; gap: 10px; align-items: center; }
+  .hero-card .q .pri { width: 26px; height: 26px; border-radius: 50%; background: var(--danger); color: #fff; display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+  .hero-card .q .pri.MEDIUM { background: var(--warning); }
+  .hero-card .q .pri.LOW { background: var(--info); }
+  .hero-card .q .ti { font-weight: 500; font-size: 14px; flex: 1; }
+  .hero-card .q .ti small { color: #a8c7ff; display: block; font-weight: 400; font-size: 11px; margin-top: 2px; }
+  .hero-card .q .btn-mini { background: #fff; color: var(--text); padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+
+  .trend-pill { background: rgba(255,255,255,.1); padding: 8px 14px; border-radius: 20px; display: flex; gap: 12px; align-items: center; font-size: 12px; }
+  .trend-pill .v { font-weight: 700; color: #ffd591; }
+
+  .health-decomp { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
+  .health-decomp .h {
+    background: #fff; border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px; text-align: center;
+  }
+  .health-decomp .h .ti { font-size: 12px; color: var(--text-3); }
+  .health-decomp .h .v { font-size: 28px; font-weight: 700; margin-top: 4px; }
+  .health-decomp .h .v.bad { color: var(--danger); }
+  .health-decomp .h .v.good { color: var(--success); }
+  .health-decomp .h .v.warn { color: var(--warning); }
+  .health-decomp .h .b { background: var(--border); height: 4px; border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  .health-decomp .h .b .bf { height: 100%; border-radius: 2px; }
+  .health-decomp .h .k { font-size: 11px; color: var(--text-3); margin-top: 6px; }
+
+  /* finding 卡片 */
+  .finding {
+    background: #fff; border-left: 4px solid var(--border);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 16px; margin-bottom: 10px;
+  }
+  .finding.HIGH { border-left-color: var(--danger); }
+  .finding.MEDIUM { border-left-color: var(--warning); }
+  .finding.LOW { border-left-color: var(--success); }
+  .finding .h { display: flex; gap: 10px; align-items: center; }
+  .finding .h .cat { font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
+  .finding .h .cat.RISK { background:#fff1f0; color:var(--danger); }
+  .finding .h .cat.WEAKNESS { background:#fff7e6; color:var(--warning); }
+  .finding .h .cat.OPPORTUNITY { background:#e6fffb; color:var(--info); }
+  .finding .h .cat.COMPLIANCE { background:#f9f0ff; color:#722ed1; }
+  .finding .h .ti { font-weight: 600; font-size: 14px; }
+  .finding .h .imp { margin-left: auto; font-size: 11px; color: var(--text-3); }
+  .finding .desc { font-size: 13px; color: var(--text-2); margin-top: 8px; line-height: 1.6; }
+  .finding .desc b { color: var(--text); font-weight: 600; }
+  .finding .impact { background: #fff7e6; padding: 8px 12px; border-radius: 6px; font-size: 12px; color: var(--warning); margin-top: 8px; }
+  .finding .impact b { color: var(--text); }
+  .finding .actions { display: flex; gap: 8px; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell" data-active="role-insight-owner.html" data-crumbs="经营驾驶舱 <span class=&quot;sep&quot;>/</span> <span class=&quot;cur&quot;>我的画像 · 老板</span>"></div>
+
+  <main class="main">
+
+    <!-- HERO 区: 健康度 + 待办 -->
+    <div class="hero-card">
+
+      <div style="display: grid; place-items: center;">
+        <div class="score-ring">
+          <div style="text-align: center;">
+            <div class="v">72</div>
+            <div class="u">/ 100</div>
+          </div>
+          <div class="level" style="background: var(--success);">B 良好</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="greet">2026-05-28 (周四) · 你的本月健康度</div>
+        <h2>张总, 你公司本月健康度 72 分</h2>
+
+        <div class="flex gap-12 mb-16">
+          <div class="trend-pill">
+            <span>📈 本月趋势</span>
+            <span class="v">+4 (比上月 68)</span>
+          </div>
+          <div class="trend-pill">
+            <span>🎯 行业对标</span>
+            <span class="v">B - 中等 (Top 40%)</span>
+          </div>
+          <div class="trend-pill">
+            <span>⚠️ 高优待办</span>
+            <span class="v">3 项</span>
+          </div>
+        </div>
+
+        <div class="quick-list">
+          <div class="q">
+            <div class="pri">1</div>
+            <div class="ti">已锁价 580 吨未对冲, 单边敞口风险
+              <small>预计 100 元/吨波动 = 损失 5.8 万</small>
+            </div>
+            <button class="btn-mini">立即处理</button>
+          </div>
+          <div class="q">
+            <div class="pri">2</div>
+            <div class="ti">客户A 资金占用 ¥2,180 万 · IRR 仅 6.4%
+              <small>占用过多, 可考虑加快结算 / 提高授信门槛</small>
+            </div>
+            <button class="btn-mini">看客户</button>
+          </div>
+          <div class="q">
+            <div class="pri MEDIUM">3</div>
+            <div class="ti">业务费环比 +42%, 主要来自 林某/王某
+              <small>启动专项审计?</small>
+            </div>
+            <button class="btn-mini">看明细</button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size: 13px; color: #a8c7ff; margin-bottom: 12px;">📊 4 域健康度雷达</div>
+        <div id="ch_radar" style="height: 240px"></div>
+      </div>
+
+    </div>
+
+    <!-- 4 域得分卡 -->
+    <div class="health-decomp mb-16">
+      <div class="h">
+        <div class="ti">销售健康</div>
+        <div class="v good">82</div>
+        <div class="b"><div class="bf" style="width:82%; background: var(--success);"></div></div>
+        <div class="k">销售额 / 吨毛利 · 表现良好</div>
+      </div>
+      <div class="h">
+        <div class="ti">资金健康</div>
+        <div class="v warn">62</div>
+        <div class="b"><div class="bf" style="width:62%; background: var(--warning);"></div></div>
+        <div class="k">CCC 48 天 · 行业中位 56 (优)</div>
+      </div>
+      <div class="h">
+        <div class="ti">风险防御</div>
+        <div class="v bad">48</div>
+        <div class="b"><div class="bf" style="width:48%; background: var(--danger);"></div></div>
+        <div class="k">未对冲单 / 客户集中度偏高</div>
+      </div>
+      <div class="h">
+        <div class="ti">利润效率</div>
+        <div class="v warn">68</div>
+        <div class="b"><div class="bf" style="width:68%; background: var(--warning);"></div></div>
+        <div class="k">净利率 3.6% vs 行业中位 3.2%</div>
+      </div>
+    </div>
+
+    <!-- 短板 / 风险清单 (按严重度排序) -->
+    <div class="row mb-16" style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px;">
+
+      <div class="card">
+        <div class="card-h">
+          <h3>🔍 本月待解决问题 (按 AI 评分排序)</h3>
+          <div class="tools">
+            <button class="btn sm primary">全部 6 项</button>
+            <button class="btn sm">高 3</button>
+            <button class="btn sm">中 2</button>
+            <button class="btn sm">机会 1</button>
+          </div>
+        </div>
+        <div class="card-b">
+
+          <div class="finding HIGH">
+            <div class="h">
+              <span class="sev HIGH"></span>
+              <span class="cat RISK">RISK</span>
+              <span class="ti">锁价单未对冲过多 (单边敞口)</span>
+              <span class="imp">扣 16 分 · score_impact</span>
+            </div>
+            <div class="desc">已锁价但未对冲 <b>580 吨</b>, 单价波动 100 元/吨, 直接影响 <b>¥58,000</b>. 近 30 天市场最大日波幅 180 元/吨, 极端情况亏 ¥104,000.</div>
+            <div class="impact">💡 <b>影响:</b> 若市场反向波动, 本月毛利可能被吞掉 1.8%</div>
+            <div class="actions">
+              <button class="btn primary sm">📈 一键对冲</button>
+              <button class="btn sm">看锁价单</button>
+              <button class="btn sm">💬 AI 详解</button>
+              <button class="btn sm">📌 标记暂缓</button>
+            </div>
+          </div>
+
+          <div class="finding HIGH">
+            <div class="h">
+              <span class="sev HIGH"></span>
+              <span class="cat RISK">RISK</span>
+              <span class="ti">资金被少数客户占用</span>
+              <span class="imp">扣 15 分</span>
+            </div>
+            <div class="desc">Top10 客户占用了 <b>71%</b> 资金 (¥4,030 万). 若 Top1 客户违约, 直接损失 <b>¥840 万</b>, 占净资产 18%.</div>
+            <div class="impact">💡 <b>影响:</b> 集中度过高, 单一客户事件冲击放大</div>
+            <div class="actions">
+              <button class="btn primary sm">看客户清单</button>
+              <button class="btn sm">提交风险审查</button>
+              <button class="btn sm">💬 AI 优化方案</button>
+            </div>
+          </div>
+
+          <div class="finding MEDIUM">
+            <div class="h">
+              <span class="sev MEDIUM"></span>
+              <span class="cat COMPLIANCE">COMPLIANCE</span>
+              <span class="ti">业务费/抹零突增</span>
+              <span class="imp">扣 8 分</span>
+            </div>
+            <div class="desc">业务费环比 <b>+42% (¥8,420)</b>, 抹零环比 <b>+15%</b>. 可能存在销售员变相让利, 影响真实毛利.</div>
+            <div class="impact">💡 <b>影响:</b> 真实毛利率可能被高估 0.3-0.5 pct</div>
+            <div class="actions">
+              <button class="btn primary sm">看明细</button>
+              <button class="btn sm">启动专项审计</button>
+            </div>
+          </div>
+
+          <div class="finding MEDIUM">
+            <div class="h">
+              <span class="sev MEDIUM"></span>
+              <span class="cat WEAKNESS">WEAKNESS</span>
+              <span class="ti">现金循环天数偏长</span>
+              <span class="imp">扣 10 分</span>
+            </div>
+            <div class="desc">现金循环 <b>48 天</b>, 行业中位 56 天 ✓ <span style="color:var(--success)">优于中位 8 天</span>. 但与 Top10 (22 天) 仍有 26 天差距.</div>
+            <div class="impact">💡 <b>机会:</b> 若达 Top10 水平, 释放运营资金 ¥7,280 万, 年化省利息 ¥328 万</div>
+            <div class="actions">
+              <button class="btn primary sm">拆分 CCC</button>
+              <button class="btn sm">💬 AI 提改善方案</button>
+            </div>
+          </div>
+
+          <div class="finding MEDIUM">
+            <div class="h">
+              <span class="sev MEDIUM"></span>
+              <span class="cat RISK">RISK</span>
+              <span class="ti">上游钢厂依赖度过高</span>
+              <span class="imp">扣 6 分</span>
+            </div>
+            <div class="desc">Top1 上游供应商 <b>沙钢</b> 占采购 <b>48%</b>. 若该供应商断货或调价, 直接影响 <b>2,300 吨/月</b> 业务.</div>
+            <div class="impact">💡 <b>影响:</b> 供应链单点风险</div>
+            <div class="actions">
+              <button class="btn primary sm">💬 找备选供应商</button>
+            </div>
+          </div>
+
+          <div class="finding LOW">
+            <div class="h">
+              <span class="sev LOW"></span>
+              <span class="cat OPPORTUNITY">OPPORTUNITY</span>
+              <span class="ti">基差倒挂套利机会 (虚拟库存)</span>
+              <span class="imp">+5 分 score_impact</span>
+            </div>
+            <div class="desc">RB 当前基差 <b>-68 元/吨</b>, 持续 4 天倒挂. 现货便宜期货贵, 可虚拟库存盈利.</div>
+            <div class="impact">💡 <b>机会:</b> 若策略合适, 月化收益 ¥80,000+</div>
+            <div class="actions">
+              <button class="btn primary sm">💬 AI 套利方案</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- 右侧: 历史趋势 + AI 经验 -->
+      <div class="col">
+
+        <div class="card">
+          <div class="card-h">
+            <h3>📈 6 个月健康度趋势</h3>
+            <div class="tools muted">滚动 12 月</div>
+          </div>
+          <div class="card-b"><div id="ch_trend" class="chart" style="height: 220px"></div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-h">
+            <h3>🤖 AI 经营教练 · 本月关键洞察</h3>
+            <div class="tools"><span class="tag info">DeepSeek</span></div>
+          </div>
+          <div class="card-b">
+            <div style="background: #f0f5ff; padding: 14px; border-radius: 8px; font-size: 13px; line-height: 1.8;">
+              张总, 本月公司经营整体 <b>良好 (B)</b>, 比上月进步 4 分. 三件事最重要:<br>
+              1. <b>立即对冲 580 吨锁价单</b>, 这是最容易避免的损失.<br>
+              2. <b>启动客户分级管控</b>, Top10 集中度 71% 偏高, 建议每月 review.<br>
+              3. <b>业务费突增需警觉</b>, 这是钢贸老板最容易"被绕过"的隐性成本.<br>
+              <br>
+              做完这 3 件, 您下月健康度可达 <b>78 分 (A 级阈值线)</b>.
+            </div>
+            <div class="flex gap-8 mt-12">
+              <button class="btn primary sm">💬 跟 AI 详聊</button>
+              <button class="btn sm">📋 生成行动清单</button>
+              <button class="btn sm">📤 分享给销售总监</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-h">
+            <h3>💡 行业最佳实践</h3>
+          </div>
+          <div class="card-b" style="display: flex; flex-direction: column; gap: 8px;">
+            <a href="#" style="display: block; padding: 10px 12px; background: #fafbfc; border-radius: 6px; color: var(--text);">📘 如何缩短现金循环天数 → 教程</a>
+            <a href="#" style="display: block; padding: 10px 12px; background: #fafbfc; border-radius: 6px; color: var(--text);">📘 客户集中度风险管理 SOP</a>
+            <a href="#" style="display: block; padding: 10px 12px; background: #fafbfc; border-radius: 6px; color: var(--text);">📘 期现结合套保最佳实践</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="./assets/layout.js"></script>
+<script>
+  // 4 域雷达
+  echarts.init(document.getElementById('ch_radar')).setOption({
+    radar: {
+      indicator: [
+        { name: '销售健康', max: 100 },
+        { name: '资金健康', max: 100 },
+        { name: '风险防御', max: 100 },
+        { name: '利润效率', max: 100 },
+      ],
+      shape: 'polygon',
+      splitArea: { areaStyle: { color: ['transparent','rgba(255,255,255,.05)'] } },
+      splitLine: { lineStyle: { color: 'rgba(255,255,255,.2)' } },
+      axisLine: { lineStyle: { color: 'rgba(255,255,255,.2)' } },
+      axisName: { color: '#a8c7ff', fontSize: 12 },
+      center: ['50%', '52%'], radius: '70%',
+    },
+    series: [{
+      type:'radar',
+      data: [
+        { value: [82, 62, 48, 68], name: '我司', areaStyle:{opacity: 0.35, color: '#52c41a'},
+          lineStyle: {color: '#95de64', width: 2}, itemStyle: {color: '#95de64'} },
+        { value: [65, 60, 60, 60], name: '行业 P50', areaStyle: {opacity: 0.15, color: '#fa8c16'},
+          lineStyle: {color: '#fa8c16', type: 'dashed'}, itemStyle: {color: '#fa8c16'} },
+      ],
+    }],
+  });
+
+  // 6 月趋势
+  echarts.init(document.getElementById('ch_trend')).setOption({
+    tooltip: { trigger: 'axis' },
+    grid: { left: 45, right: 30, top: 20, bottom: 30 },
+    xAxis: { type:'category', data: ['12月','1月','2月','3月','4月','5月'] },
+    yAxis: { type:'value', min: 50, max: 100 },
+    series: [
+      { type:'line', smooth: true, data: [58, 62, 65, 64, 68, 72],
+        itemStyle:{color:'#52c41a'}, lineStyle:{width:3},
+        areaStyle:{color:'rgba(82,196,26,.2)'},
+        markLine: { data: [{type:'average', name:'近6月均值'}], lineStyle:{color:'#fa8c16'} } },
+    ],
+  });
+</script>
+</body>
+</html>

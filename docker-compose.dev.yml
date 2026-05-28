@@ -241,6 +241,19 @@ services:
     depends_on: [mysql]
     restart: unless-stopped
 
+  # ----------------------- 岗位智能画像 (Python) -----------------------
+  role-insight-service:
+    build: ./services/role-insight-service
+    container_name: steel-role-insight
+    ports:
+      - "8970:8970"
+    volumes:
+      - ./role_insights:/opt/role_insights:ro
+    environment:
+      - ROLE_INSIGHTS_DIR=/opt/role_insights
+      - TZ=Asia/Shanghai
+    restart: unless-stopped
+
   # ----------------------- 预测 (Python) -----------------------
   forecast-service:
     build:

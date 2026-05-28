@@ -1,0 +1,115 @@
+## ============================================================
+## 钢贸销售员 (TRADE_SALES_REP) 岗位画像 - AI 教练贴身
+## ============================================================
+role_code: TRADE_SALES_REP
+role_name: 钢贸销售员
+business_line: TRADE
+level: STAFF
+focus_areas: [my_sales, my_customer, my_capital, my_commission]
+
+primary_kpis:
+  - {code: my_ton_gross_profit,   weight: 0.30, direction: HIGHER, label: 我的吨毛利, peer_compare: true}
+  - {code: my_active_customers,   weight: 0.15, direction: HIGHER, label: 活跃客户数}
+  - {code: my_ar_balance,         weight: 0.10, direction: LOWER,  label: 我应收占用}
+  - {code: my_aged_ar_pct,        weight: 0.15, direction: LOWER,  label: 我老应收占比}
+  - {code: my_commission_calc,    weight: 0.20, direction: HIGHER, label: 我的提成, peer_compare: true}
+  - {code: my_new_customer_count, weight: 0.10, direction: HIGHER, label: 我新客户数}
+
+rules:
+  - id: TR_REP_TGP_BELOW_PEER
+    category: WEAKNESS
+    severity: HIGH
+    title: 您吨毛利明显低于团队均值
+    when: "my_ton_gross_profit < team_avg_ton_gross_profit * 0.85"
+    finding: "您本月吨毛利 {my_ton_gross_profit:.0f} 元, 团队均值 {team_avg:.0f} 元, 差距 {gap_pct:.0%}"
+    impact: "若达均值, 本月可多挣提成 ¥{potential:,.0f}"
+    actions:
+      - {label: 哪些单拉低均值, type: navigate, path: "/drilldown?metric=my_ton_gross_profit&dim=order"}
+      - {label: AI 帮我分析, type: chat, prompt: "为什么我吨毛利低? 给具体建议"}
+      - {label: 看 Top 同事玩法, type: navigate, path: "/role-insight/peer?top=1"}
+    score_impact: 18
+
+  - id: TR_REP_CUST_CONC
+    category: RISK
+    severity: MEDIUM
+    title: 您的客户过于集中
+    when: "top2_customer_share > 0.70"
+    finding: "您前 2 大客户占 {top2_share:.0%} 销售额, 主要是 {top1_name} ({top1_pct:.0%})"
+    impact: "Top1 客户停单, 下月预计少 ¥{potential:,.0f}, 提成少 ¥{commission_loss:,.0f}"
+    actions:
+      - {label: AI 推荐潜在新客户, type: chat, prompt: "结合我的产品, 推荐 5 个值得开发的客户"}
+      - {label: 看客户结构, type: navigate, path: "/drilldown?metric=my_revenue&dim=customer"}
+    score_impact: 8
+
+  - id: TR_REP_AGED_AR
+    category: RISK
+    severity: HIGH
+    title: 您的老应收偏多 (181 天+)
+    when: "my_aged_ar_pct > 0.15"
+    finding: "您 181+ 账龄应收 ¥{my_aged_ar:,.0f}, 占总应收 {my_aged_ar_pct:.0%}"
+    impact: "按 30% 坏账率, 潜在亏损 ¥{risk_amount:,.0f}, 直接扣您提成"
+    actions:
+      - {label: 一键发催收短信, type: action, handler: sendDunningSms}
+      - {label: 看客户清单, type: navigate, path: "/drilldown?metric=my_aged_ar&dim=customer"}
+      - {label: 提交回款承诺录入, type: navigate, path: "/customer/promise"}
+    score_impact: 12
+
+  - id: TR_REP_INDIRECT_HIGH
+    category: OPPORTUNITY
+    severity: MEDIUM
+    title: 间销占比偏高 - 提成被打 5 折
+    when: "indirect_share > 0.40"
+    finding: "您间销订单占 {indirect_share:.0%}, 提成系数仅 0.5"
+    impact: "若全部改为直销, 本月可多挣 ¥{potential:,.0f}"
+    actions:
+      - {label: 哪些单是间销, type: navigate, path: "/drilldown?metric=indirect_share&dim=order"}
+      - {label: AI 教我谈直销, type: chat, prompt: "客户为什么不愿意直签? 怎么破?"}
+    score_impact: 10
+
+  - id: TR_REP_NO_NEW_CUST_QTR
+    category: OPPORTUNITY
+    severity: LOW
+    title: 本季度尚未开发新客户
+    when: "my_new_customer_count_qtr = 0"
+    finding: "您本季度未开发新客户, 同组员均开 {peer_avg:.0f} 个"
+    impact: "客户池在缩小, 长期收入下滑风险"
+    actions:
+      - {label: AI 推荐潜在客户, type: chat, prompt: "推荐 10 个值得开发的客户, 含联系方式建议"}
+      - {label: 看潜在客户列表, type: navigate, path: "/customer/prospects"}
+    score_impact: 5
+
+  - id: TR_REP_BIZ_FEE_HIGH
+    category: COMPLIANCE
+    severity: MEDIUM
+    title: 您本月业务费偏高
+    when: "my_biz_fee_amt > 3000"
+    finding: "您本月业务费 ¥{my_biz_fee_amt:,.0f}, 团队均值 ¥{peer_avg:,.0f}"
+    impact: "扣减后提成减少 ¥{my_biz_fee_amt:,.0f}, 是否每笔都必要?"
+    actions:
+      - {label: 看明细, type: navigate, path: "/biz-expense-audit?rep=me"}
+    score_impact: 6
+
+  - id: TR_REP_LOW_TONNAGE
+    category: WEAKNESS
+    severity: MEDIUM
+    title: 销售吨数显著低于上月
+    when: "my_tonnage_mom_pct < -0.20"
+    finding: "您本月销售 {my_tonnage:.0f} 吨, 环比 {my_tonnage_mom_pct:.0%}"
+    impact: "若不补单, 本月提成预计 ¥{forecast_commission:,.0f}, 比上月少 ¥{commission_loss:,.0f}"
+    actions:
+      - {label: AI 帮我找补单机会, type: chat, prompt: "我哪些休眠客户最容易激活?"}
+    score_impact: 10
+
+routines:
+  - "查看我今天的订单"
+  - "查看我的应收逾期"
+  - "查看我本月提成"
+  - "查看我的客户结构"
+
+education:
+  - topic: 怎么把走量型客户变利润型
+    prompt: "我有个客户经常压价, 怎么破?"
+  - topic: 怎么催回款不伤客情
+    prompt: "客户拖延付款, 不想撕破脸, 怎么催?"
+  - topic: 怎么开发新客户
+    prompt: "我刚接的新片区, 没人脉, 怎么破冰?"
