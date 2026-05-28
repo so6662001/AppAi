@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>指标注册中心 · 钢铁 AI 经营分析平台</title>
+<link rel="stylesheet" href="./assets/shared.css">
+<style>
+  .reg-shell { display: grid; grid-template-columns: 220px 1fr; gap: 16px; }
+  .cat-side { background: #fff; border: 1px solid var(--border); border-radius: 8px; }
+  .cat-side .cat-h { padding: 12px 14px; border-bottom: 1px solid var(--border); font-weight: 600; }
+  .cat-side .it { padding: 8px 14px; cursor: pointer; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
+  .cat-side .it:hover { background: #fafdff; }
+  .cat-side .it.active { background: #f0f5ff; color: var(--primary); border-left: 3px solid var(--primary); padding-left: 11px; font-weight: 500; }
+  .cat-side .it .cnt { color: var(--text-3); font-size: 11px; }
+  .metric-list { display: flex; flex-direction: column; }
+
+  .metric-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 8px; }
+  .metric-card:hover { border-color: var(--primary); }
+  .metric-card .h { display: flex; gap: 8px; align-items: center; }
+  .metric-card .h .code { font-family: monospace; color: var(--primary); font-size: 11px; }
+  .metric-card .h .name { font-weight: 600; font-size: 14px; }
+  .metric-card .h .ver { font-size: 11px; color: var(--text-3); background: #f4f6fa; padding: 1px 6px; border-radius: 3px; }
+  .metric-card .desc { font-size: 12px; color: var(--text-2); margin-top: 4px; }
+  .metric-card .formula { font-family: monospace; font-size: 11px; background: #fafbfc; padding: 6px 10px; border-radius: 4px; margin-top: 8px; color: var(--text-2); }
+  .metric-card .meta { display: flex; gap: 16px; margin-top: 8px; font-size: 11px; color: var(--text-3); }
+  .metric-card .meta b { color: var(--text); }
+  .metric-card .ownr { display: flex; align-items: center; gap: 6px; }
+  .metric-card .ownr .av { width: 20px; height: 20px; border-radius: 50%; background: linear-gradient(135deg, #1677ff, #722ed1); color: #fff; display: grid; place-items: center; font-size: 11px; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell" data-active="metric-registry.html" data-crumbs="合规与治理 <span class=&quot;sep&quot;>/</span> <span class=&quot;cur&quot;>指标注册中心</span>"></div>
+
+  <main class="main">
+
+    <div class="page-title">
+      <div>
+        <h1>指标注册中心</h1>
+        <div class="desc">220+ 业务指标 · YAML 源 · 版本 / 审批 / 血缘 / 质量 / 订阅 全生命周期治理</div>
+      </div>
+      <div class="flex gap-12">
+        <button class="btn">📊 SLA 热力图</button>
+        <button class="btn">🌐 血缘图谱</button>
+        <button class="btn">🔄 变更请求</button>
+        <button class="btn primary">＋ 新建指标</button>
+      </div>
+    </div>
+
+    <!-- KPI -->
+    <div class="row-5 mb-16">
+      <div class="card"><div class="card-b"><div class="kpi"><div class="lbl">指标总数</div><div class="val">220<span class="unit">个</span></div></div></div></div>
+      <div class="card"><div class="card-b"><div class="kpi"><div class="lbl">本月新增</div><div class="val" style="color:var(--success)">+12</div></div></div></div>
+      <div class="card"><div class="card-b"><div class="kpi"><div class="lbl">变更请求</div><div class="val" style="color:var(--warning)">8</div><div class="sub">3 待审批</div></div></div></div>
+      <div class="card"><div class="card-b"><div class="kpi"><div class="lbl">SLA 达成率</div><div class="val">96.8<span class="unit">%</span></div></div></div></div>
+      <div class="card"><div class="card-b"><div class="kpi"><div class="lbl">数据质量异常</div><div class="val" style="color:var(--danger)">3</div></div></div></div>
+    </div>
+
+    <div class="reg-shell">
+
+      <!-- 左侧分类 -->
+      <aside class="cat-side">
+        <div class="cat-h">📂 业务域 (Domain)</div>
+        <div class="it"><span>全部</span><span class="cnt">220</span></div>
+        <div class="it active"><span>📦 销售</span><span class="cnt">52</span></div>
+        <div class="it"><span>📊 库存</span><span class="cnt">38</span></div>
+        <div class="it"><span>⚙️ 生产/加工</span><span class="cnt">28</span></div>
+        <div class="it"><span>🛒 采购</span><span class="cnt">22</span></div>
+        <div class="it"><span>✔ 质量</span><span class="cnt">18</span></div>
+        <div class="it"><span>💰 资金占用</span><span class="cnt">14</span></div>
+        <div class="it"><span>🚨 风险</span><span class="cnt">12</span></div>
+        <div class="it"><span>🔮 预测</span><span class="cnt">8</span></div>
+        <div class="it"><span>📦 ABC 长尾</span><span class="cnt">6</span></div>
+        <div class="it"><span>📈 期现结合</span><span class="cnt">21</span> <span class="tag info" style="margin-left:6px;font-size:10px">新</span></div>
+        <div class="it"><span>💼 提成/员工</span><span class="cnt">10</span></div>
+        <div class="it"><span>💲 业务费/抹零</span><span class="cnt">5</span></div>
+        <div class="it"><span>📑 财务三表</span><span class="cnt">21</span></div>
+      </aside>
+
+      <!-- 右侧指标列表 + 详情 -->
+      <section style="display:grid; grid-template-columns: 1fr 360px; gap: 16px;">
+
+        <!-- 列表 -->
+        <div>
+          <!-- 工具栏 -->
+          <div class="card mb-12" style="padding: 10px 14px; display: flex; gap: 12px; align-items: center;">
+            <div class="search" style="margin: 0; width: auto; flex: 1; height: 30px;">🔍 <input placeholder="按 code / 名称 / 同义词搜索, 例: 吨毛利"></div>
+            <select style="width:120px"><option>全部状态</option><option>已发布</option><option>草稿</option><option>已废弃</option></select>
+            <select style="width:120px"><option>全部业务线</option><option>TRADE</option><option>PROCESS</option><option>MILL</option><option>SHELL</option></select>
+          </div>
+
+          <div class="metric-list">
+
+            <div class="metric-card">
+              <div class="h">
+                <span class="code">M001</span>
+                <span class="name">销售额 (sales_amount)</span>
+                <span class="ver">v1.4</span>
+                <span class="tag success">已发布</span>
+                <span class="tag muted">TRADE</span>
+                <span style="margin-left:auto" class="ownr"><span class="av">林</span> <span>林总监</span></span>
+              </div>
+              <div class="desc">含税销售金额, 来源销售订单 + 销售出库</div>
+              <div class="formula">SUM(amount_incl_tax) FROM dws_sales_daily</div>
+              <div class="meta">
+                <span>📊 <b>78</b> 用户订阅</span>
+                <span>🌐 <b>14</b> 下游指标</span>
+                <span>🔄 最近改 <b>3 天前</b></span>
+                <span>💚 SLA <b>99.6%</b></span>
+                <span>同义词: 销售/营业额/Revenue</span>
+              </div>
+            </div>
+
+            <div class="metric-card" style="background: #fafdff; border-color: var(--primary)">
+              <div class="h">
+                <span class="code">M015</span>
+                <span class="name">吨毛利 (ton_gross_profit)</span>
+                <span class="ver">v2.1</span>
+                <span class="tag success">已发布</span>
+                <span class="tag muted">TRADE</span>
+                <span class="tag warning">最热</span>
+                <span style="margin-left:auto" class="ownr"><span class="av">林</span> <span>林总监</span></span>
+              </div>
+              <div class="desc">销售毛利 / 销售吨数 · 钢贸核心健康度指标</div>
+              <div class="formula">SUM(gross_profit) / NULLIF(SUM(tonnage), 0)</div>
+              <div class="meta">
+                <span>📊 <b>156</b> 用户订阅</span>
+                <span>🌐 <b>22</b> 下游指标</span>
+                <span>🔄 最近改 <b>本周</b></span>
+                <span>💚 SLA <b>100%</b></span>
+                <span>同义词: 吨毛利/单吨利润</span>
+              </div>
+            </div>
+
+            <div class="metric-card">
+              <div class="h">
+                <span class="code">M042</span>
+                <span class="name">挂牌毛利 (listed_gross_profit)</span>
+                <span class="ver">v1.2</span>
+                <span class="tag success">已发布</span>
+                <span class="tag muted">TRADE</span>
+                <span style="margin-left:auto" class="ownr"><span class="av">林</span> <span>林总监</span></span>
+              </div>
+              <div class="desc">销售价 - 当日上游挂牌价, 提成核心基数</div>
+              <div class="formula">SUM((unit_price - listed_price_snapshot) * tonnage)</div>
+              <div class="meta">
+                <span>📊 <b>62</b> 订阅</span>
+                <span>🌐 <b>5</b> 下游</span>
+                <span>💚 SLA <b>98.4%</b></span>
+                <span>同义词: 让利/对挂利润</span>
+              </div>
+            </div>
+
+            <div class="metric-card">
+              <div class="h">
+                <span class="code">M068</span>
+                <span class="name">客户授信使用率 (credit_utilization)</span>
+                <span class="ver">v1.0</span>
+                <span class="tag success">已发布</span>
+                <span class="tag muted">RISK</span>
+                <span style="margin-left:auto" class="ownr"><span class="av">陈</span> <span>陈总监</span></span>
+              </div>
+              <div class="desc">(应收 + 待提库存) / 授信额度</div>
+              <div class="formula">SUM(ar_amount + pinned_inv_amount) / NULLIF(credit_limit, 0)</div>
+              <div class="meta">
+                <span>📊 <b>34</b> 订阅</span>
+                <span>🚨 <b>2</b> 预警规则</span>
+                <span>💚 SLA <b>97.2%</b></span>
+              </div>
+            </div>
+
+            <div class="metric-card">
+              <div class="h">
+                <span class="code">H001</span>
+                <span class="name">已锁未对冲吨数 (locked_unhedged_tonnage)</span>
+                <span class="ver">v1.0</span>
+                <span class="tag info">已发布</span>
+                <span class="tag warning">期现</span>
+                <span style="margin-left:auto" class="ownr"><span class="av">周</span> <span>周财总</span></span>
+              </div>
+              <div class="desc">已锁价订单中未在期货端建立对应空头的吨数 (单边敞口)</div>
+              <div class="formula">SUM(CASE WHEN hedge_position_id IS NULL THEN lock_tonnage ELSE 0 END)</div>
+              <div class="meta">
+                <span>📊 <b>8</b> 订阅</span>
+                <span>🚨 <b>1</b> 预警: > 500 吨</span>
+                <span>需 ENABLE_HEDGE</span>
+              </div>
+            </div>
+
+            <div class="metric-card" style="opacity: .65">
+              <div class="h">
+                <span class="code">M127</span>
+                <span class="name">活动期售吨数 (campaign_tonnage)</span>
+                <span class="ver">v1.0 → <span style="color:var(--warning)">v1.1 (草稿)</span></span>
+                <span class="tag warning">变更中</span>
+                <span style="margin-left:auto" class="ownr"><span class="av">王</span> <span>王经理</span></span>
+              </div>
+              <div class="desc">活动期间销售吨数, 用于营销复盘</div>
+              <div class="formula">SUM(tonnage) WHERE campaign_id IS NOT NULL</div>
+              <div class="meta">
+                <span>变更原因: 修改活动定义</span>
+                <span>影响: <b>3</b> 下游指标</span>
+                <span><a>查看变更 CR-2026-088 →</a></span>
+              </div>
+            </div>
+
+            <div style="text-align: center; padding: 12px;">
+              <button class="btn">查看 52 个销售指标 →</button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- 右侧详情 -->
+        <aside class="card">
+          <div class="card-h">
+            <h3>📌 吨毛利 · ton_gross_profit</h3>
+            <span class="tag info">v2.1</span>
+          </div>
+          <div class="card-b">
+            <div style="font-size:12px;color:var(--text-2);line-height:1.7">
+              <div><b>业务含义:</b> 销售毛利 ÷ 销售吨数, 钢贸核心健康度指标. 加权口径而非简单平均.</div>
+              <div class="mt-8"><b>计算公式:</b></div>
+              <div class="formula">SUM(gross_profit) / NULLIF(SUM(tonnage), 0)</div>
+              <div class="mt-8"><b>数据源:</b></div>
+              <ul style="padding-left: 18px; margin: 4px 0;">
+                <li><code>dws_sales_daily.gross_profit</code></li>
+                <li><code>dws_sales_daily.tonnage</code></li>
+              </ul>
+
+              <div class="mt-8"><b>支持维度:</b></div>
+              <div class="flex" style="flex-wrap:wrap; gap: 4px;">
+                <span class="tag muted">date</span><span class="tag muted">org</span>
+                <span class="tag muted">customer</span><span class="tag muted">material</span>
+                <span class="tag muted">origin</span><span class="tag muted">grade</span>
+                <span class="tag muted">product_type</span>
+              </div>
+
+              <div class="mt-8"><b>同义词:</b> 吨毛利, 单吨利润, 吨利, GP/T</div>
+
+              <div class="mt-12"><b>SLA 与质量:</b></div>
+              <div style="display:flex; gap:8px; margin-top: 4px;">
+                <span class="tag success">SLA 100%</span>
+                <span class="tag success">⏰ 准时</span>
+                <span class="tag success">完整性 99.8%</span>
+                <span class="tag">F1 99.5%</span>
+              </div>
+
+              <div class="mt-12"><b>权限:</b></div>
+              <div style="font-size: 12px; margin-top: 4px;">
+                · 总经理 / 销售总监 / 财务总监: 全量<br>
+                · 销售员: 仅本人数据<br>
+                · 客户经理: 不可见 (敏感)
+              </div>
+
+              <div class="mt-12"><b>变更历史:</b></div>
+              <table class="tb" style="font-size: 11px; margin-top: 4px;">
+                <tr><td>v2.1</td><td>本周</td><td>加权口径修正</td></tr>
+                <tr><td>v2.0</td><td>3 个月前</td><td>含税口径调整</td></tr>
+                <tr><td>v1.0</td><td>2024-12</td><td>初始版本</td></tr>
+              </table>
+            </div>
+            <div style="display:flex; gap:8px; margin-top: 12px;">
+              <button class="btn primary sm">✏ 提变更</button>
+              <button class="btn sm">🌐 看血缘</button>
+              <button class="btn sm">📋 复制 YAML</button>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+    </div>
+
+  </main>
+</div>
+<script src="./assets/layout.js"></script>
+</body>
+</html>

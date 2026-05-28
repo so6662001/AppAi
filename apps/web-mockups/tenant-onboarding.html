@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>租户开户向导 · 钢铁 AI 经营分析平台</title>
+<link rel="stylesheet" href="./assets/shared.css">
+<style>
+  body { background: linear-gradient(135deg, #f4f6fa 0%, #e6f4ff 100%); }
+  .wizard-shell { max-width: 1080px; margin: 32px auto; }
+  .wizard-h { padding: 24px 32px; background: linear-gradient(135deg, #001529, #003a8c); color: #fff; border-radius: 12px 12px 0 0; }
+  .wizard-h h1 { margin: 0; font-size: 24px; }
+  .wizard-h .desc { color: #a8c7ff; margin-top: 6px; font-size: 13px; }
+  .panel { background: #fff; padding: 32px; border-radius: 0 0 12px 12px; box-shadow: var(--shadow-md); }
+
+  .biz-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 16px; }
+  .biz-cd {
+    border: 2px solid var(--border); border-radius: 10px; padding: 20px; cursor: pointer;
+    background: #fff; transition: all .15s; position: relative;
+  }
+  .biz-cd:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+  .biz-cd.sel { border-color: var(--primary); background: linear-gradient(135deg, #f0f5ff, #fff); }
+  .biz-cd.sel::after { content: '✔'; position: absolute; top: 12px; right: 12px; width: 22px; height: 22px; background: var(--primary); color: #fff; border-radius: 50%; display: grid; place-items: center; font-size: 12px; }
+  .biz-cd .icon { font-size: 36px; }
+  .biz-cd .nm { font-weight: 600; margin-top: 8px; font-size: 14px; }
+  .biz-cd .ds { color: var(--text-3); font-size: 12px; margin-top: 4px; line-height: 1.6; }
+  .biz-cd .tag-line { margin-top: 10px; }
+
+  .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .feature-cd { padding: 14px 16px; border: 1px solid var(--border); border-radius: 8px; display: flex; gap: 12px; align-items: flex-start; }
+  .feature-cd .il { font-size: 22px; flex-shrink: 0; width: 36px; text-align: center; }
+  .feature-cd .ti { font-weight: 600; }
+  .feature-cd .sb { color: var(--text-3); font-size: 12px; margin-top: 2px; }
+  .feature-cd .switch { margin-left: auto; flex-shrink: 0; }
+  .feature-cd.warning { background: #fff7e6; border-color: #ffd591; }
+
+  .switch { position: relative; display: inline-block; width: 36px; height: 20px; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .slider { position: absolute; cursor: pointer; inset: 0; background: #d9d9d9; border-radius: 20px; transition: .2s; }
+  .switch .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; top: 2px; background: #fff; border-radius: 50%; transition: .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+  .switch input:checked + .slider { background: var(--success); }
+  .switch input:checked + .slider:before { transform: translateX(16px); }
+</style>
+</head>
+<body>
+
+<div class="wizard-shell">
+
+  <div class="wizard-h">
+    <div style="display:flex; align-items:center; gap:14px;">
+      <div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#1677ff,#722ed1);display:grid;place-items:center;font-size:20px;font-weight:800">钢</div>
+      <div>
+        <h1>欢迎使用 · 钢铁 AI 经营分析平台</h1>
+        <div class="desc">让我用 3 步帮您把系统调成 <b style="color:#fff">最贴合您业务的样子</b></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <!-- 步骤条 -->
+    <div class="steps" style="border-bottom: 1px solid var(--border); padding: 0 0 24px;">
+      <div class="step done"><div class="num">✓</div><span>1. 公司基本信息</span></div>
+      <div class="arrow">›</div>
+      <div class="step active"><div class="num">2</div><span>2. 业务模式 + 特性开关</span></div>
+      <div class="arrow">›</div>
+      <div class="step"><div class="num">3</div><span>3. 提成模板 + 预览开通</span></div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="mt-24">
+      <h2 style="margin:0 0 8px; font-size:18px;">2. 您的业务包含哪几种? <span class="muted" style="font-size:12px; font-weight: normal;">(可多选, 系统会同时启用对应指标包 + 提成模板)</span></h2>
+
+      <div class="biz-grid">
+        <div class="biz-cd sel">
+          <div class="icon">📦</div>
+          <div class="nm">钢贸现货</div>
+          <div class="ds">有库存 · 看挂牌毛利 · 看吨毛利<br>提成基数: 挂牌毛利 30%</div>
+          <div class="tag-line"><span class="tag">默认主营</span></div>
+        </div>
+        <div class="biz-cd sel">
+          <div class="icon">⚙️</div>
+          <div class="nm">加工厂</div>
+          <div class="ds">有加工 · 看加工费 + 钢材买卖<br>提成基数: 加工费 15% + 毛利 25%</div>
+        </div>
+        <div class="biz-cd">
+          <div class="icon">🏭</div>
+          <div class="nm">钢厂自销</div>
+          <div class="ds">不分客群 · 看吨毛利<br>提成基数: 50 元/吨</div>
+        </div>
+        <div class="biz-cd">
+          <div class="icon">🌐</div>
+          <div class="nm">皮包/纯撮合</div>
+          <div class="ds">无库存 · 看撮合差价<br>提成基数: 撮合差价 50%</div>
+        </div>
+      </div>
+
+      <!-- 主体结构 -->
+      <div class="row-2 mt-24" style="gap: 16px">
+        <div class="card">
+          <div class="card-h"><h3>🏢 您是否有多个法人主体?</h3></div>
+          <div class="card-b">
+            <div class="flex gap-12 mb-12">
+              <label class="flex" style="gap:6px"><input type="radio" name="entity" checked> <span><b>多主体</b> (推荐启用合并报表)</span></label>
+              <label class="flex" style="gap:6px"><input type="radio" name="entity"> <span>单主体</span></label>
+            </div>
+            <div class="muted" style="font-size:12px">填写主体数量, 后续可在系统添加详细信息.</div>
+            <input type="number" value="5" style="width: 120px; margin-top: 8px;">
+            <span class="muted">个法人主体</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h"><h3>📈 您是否做期现结合?</h3></div>
+          <div class="card-b">
+            <div class="flex gap-12 mb-12">
+              <label class="flex" style="gap:6px"><input type="radio" name="hedge" checked> <span><b>是, 都有</b> (锁价 + 点价)</span></label>
+              <label class="flex" style="gap:6px"><input type="radio" name="hedge"> <span>仅锁价</span></label>
+              <label class="flex" style="gap:6px"><input type="radio" name="hedge"> <span>不做</span></label>
+            </div>
+            <div class="muted" style="font-size:12px">主要套保合约 (可多选):</div>
+            <div class="flex gap-8 mt-8" style="flex-wrap:wrap">
+              <span class="tag" style="background:#f0f5ff;color:var(--primary)">✔ HC 热卷</span>
+              <span class="tag" style="background:#f0f5ff;color:var(--primary)">✔ RB 螺纹</span>
+              <span class="tag muted">+ I 铁矿</span>
+              <span class="tag muted">+ JM 焦煤</span>
+              <span class="tag muted">+ SS 不锈</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature flags -->
+      <h2 style="margin: 24px 0 12px; font-size: 18px;">🎚 特性开关 <span class="muted" style="font-size: 12px; font-weight: normal;">(任何时候都能在系统中改, 暗规则项默认关闭并需审批)</span></h2>
+
+      <div class="feature-grid">
+
+        <div class="feature-cd">
+          <div class="il">💸</div>
+          <div style="flex:1;">
+            <div class="ti">应收占款扣息</div>
+            <div class="sb">销售员提成扣减应收资金成本 (0.0125%/天 ≈ 4.5%/年)</div>
+          </div>
+          <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+        </div>
+
+        <div class="feature-cd">
+          <div class="il">📦</div>
+          <div style="flex:1;">
+            <div class="ti">库存占款扣息</div>
+            <div class="sb">销售员提成扣减库存资金成本 (0.015%/天 ≈ 5.5%/年)</div>
+          </div>
+          <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+        </div>
+
+        <div class="feature-cd">
+          <div class="il">👥</div>
+          <div style="flex:1;">
+            <div class="ti">客群差异化提成</div>
+            <div class="sb">利润型客户 1.2 / 走量型客户 0.8 · 鼓励高质量客户</div>
+          </div>
+          <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+        </div>
+
+        <div class="feature-cd">
+          <div class="il">🤝</div>
+          <div style="flex:1;">
+            <div class="ti">直销/间销差异化</div>
+            <div class="sb">直销 1.0 / 间销 0.5 / 纯转单 0.3</div>
+          </div>
+          <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+        </div>
+
+        <div class="feature-cd warning">
+          <div class="il">📋</div>
+          <div style="flex:1;">
+            <div class="ti">业务费建模 <span class="tag warning" style="font-size:10px;">敏感</span></div>
+            <div class="sb">允许在销售单上挂"业务费", 进入提成扣减 · 启用后会自动配上限规则与审批</div>
+          </div>
+          <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+        </div>
+
+        <div class="feature-cd warning">
+          <div class="il">💲</div>
+          <div style="flex:1;">
+            <div class="ti">抹零建模 <span class="tag warning" style="font-size:10px;">敏感</span></div>
+            <div class="sb">允许将整单尾差挂"抹零"科目 · 启用后会自动配上限规则与审批</div>
+          </div>
+          <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+        </div>
+
+        <div class="feature-cd">
+          <div class="il">🎁</div>
+          <div style="flex:1;">
+            <div class="ti">返点建模 <span class="tag" style="font-size:10px;">非必需</span></div>
+            <div class="sb">允许采购返点 + 客户返利双向台账</div>
+          </div>
+          <label class="switch"><input type="checkbox"><span class="slider"></span></label>
+        </div>
+
+        <div class="feature-cd">
+          <div class="il">🏢</div>
+          <div style="flex:1;">
+            <div class="ti">多法人合并 <span class="tag info" style="font-size:10px;">推荐</span></div>
+            <div class="sb">合并报表 + 关联交易抵消, 配合多主体使用</div>
+          </div>
+          <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+        </div>
+      </div>
+
+      <div style="background:#fafbfc; padding: 14px 16px; border-radius: 8px; margin-top: 20px; font-size: 12px; color: var(--text-2);">
+        💡 <b>这些都是默认值, 您之后随时可以在 [系统 → 特性开关] 调整.</b> 启用 "业务费/抹零" 时, 任何写入都会留 operator + audited 痕迹.
+      </div>
+    </div>
+
+    <!-- 底部导航 -->
+    <div style="display:flex; justify-content: space-between; margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
+      <button class="btn">← 上一步</button>
+      <div class="flex gap-12">
+        <button class="btn">跳过, 用默认值</button>
+        <button class="btn primary lg">下一步: 选择提成模板 →</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

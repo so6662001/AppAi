@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>财务三表 · 钢铁 AI 经营分析平台</title>
+<link rel="stylesheet" href="./assets/shared.css">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  .tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--border); margin-bottom: 16px; }
+  .tabs .tb { padding: 10px 20px; cursor: pointer; font-size: 14px; color: var(--text-2); border-bottom: 3px solid transparent; margin-bottom: -2px; }
+  .tabs .tb:hover { color: var(--primary); }
+  .tabs .tb.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+
+  .fs-table { width: 100%; border-collapse: collapse; }
+  .fs-table thead { background: linear-gradient(180deg, #001529, #003a8c); color: #fff; }
+  .fs-table thead th { padding: 12px 16px; text-align: right; font-size: 12px; font-weight: 500; }
+  .fs-table thead th:first-child { text-align: left; }
+  .fs-table tbody td { padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .fs-table tbody td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+  .fs-table .sec td { background: #f0f5ff; font-weight: 600; color: var(--text); border-top: 2px solid var(--primary); }
+  .fs-table .sub td { padding-left: 36px; color: var(--text-2); }
+  .fs-table .tt td { background: #fafbfc; font-weight: 700; border-top: 2px solid var(--border); border-bottom: 2px solid var(--border); }
+  .fs-table .grand td { background: #001529; color: #fff; font-weight: 700; font-size: 14px; }
+  .fs-table tbody tr:hover td:not(.grand-row) { background: #fafdff; }
+  .fs-table .neg { color: var(--danger); }
+  .fs-table .pos { color: var(--success); }
+  .fs-table .pct { color: var(--text-3); font-size: 11px; }
+  .dark-row td:first-child { font-style: italic; color: var(--warning); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell" data-active="finance-statements.html" data-crumbs="报表与预测 <span class=&quot;sep&quot;>/</span> <span class=&quot;cur&quot;>财务三表</span>" data-user="周某" data-role="财务总监"></div>
+
+  <main class="main">
+
+    <div class="page-title">
+      <div>
+        <h1>财务三表</h1>
+        <div class="desc">利润表 · 资产负债表 · 现金流量表 · 2026 年 05 月 · 合并报表</div>
+      </div>
+      <div class="flex gap-12">
+        <select style="width:140px"><option>2026 年 05 月</option><option>2026 Q2</option><option>2026 年初至今</option></select>
+        <select style="width:160px"><option>合并报表 (5 主体)</option><option>上海钢贸</option><option>张家港加工</option></select>
+        <div class="btn-grp">
+          <button class="btn">同比</button>
+          <button class="btn">环比</button>
+          <button class="btn primary">YTD</button>
+        </div>
+        <button class="btn primary">📤 导出 Excel</button>
+      </div>
+    </div>
+
+    <!-- Tab -->
+    <div class="tabs">
+      <div class="tb active">📋 利润表 (Income Statement)</div>
+      <div class="tb">📊 资产负债表 (Balance Sheet)</div>
+      <div class="tb">💰 现金流量表 (Cash Flow)</div>
+      <div class="tb">📈 关键指标</div>
+    </div>
+
+    <!-- KPI 卡 -->
+    <div class="row-4 mb-16">
+      <div class="card"><div class="card-b">
+        <div class="kpi">
+          <div class="lbl">营业收入</div>
+          <div class="val">¥2.92<span class="unit">亿</span></div>
+          <div class="sub trend up">同比 +14.2% · 环比 +6.8%</div>
+        </div>
+      </div></div>
+      <div class="card"><div class="card-b">
+        <div class="kpi">
+          <div class="lbl">毛利 (毛利率 10.4%)</div>
+          <div class="val">¥3,044<span class="unit">万</span></div>
+          <div class="sub trend up">同比 +18.4%</div>
+        </div>
+      </div></div>
+      <div class="card"><div class="card-b">
+        <div class="kpi">
+          <div class="lbl">净利润 (净利率 3.6%)</div>
+          <div class="val">¥1,058<span class="unit">万</span></div>
+          <div class="sub trend up">同比 +22.6%</div>
+        </div>
+      </div></div>
+      <div class="card"><div class="card-b">
+        <div class="kpi">
+          <div class="lbl">经营活动现金净流入</div>
+          <div class="val" style="color:var(--success)">¥1,420<span class="unit">万</span></div>
+          <div class="sub muted">现金回款健康</div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="row mb-16" style="display:grid;grid-template-columns: 1.6fr 1fr; gap: 16px;">
+
+      <!-- 利润表主表 -->
+      <div class="card">
+        <div class="card-h">
+          <h3>📋 利润表 (本期 vs 上期 vs 同期)</h3>
+          <div class="tools"><span class="tag info">含暗规则口径</span></div>
+        </div>
+        <div class="card-b no-pad">
+          <table class="fs-table">
+            <thead>
+              <tr><th>项目</th><th>本期 (5月)</th><th>上期 (4月)</th><th>环比</th><th>同期 (去年5月)</th><th>同比</th></tr>
+            </thead>
+            <tbody>
+              <tr class="sec"><td>一. 营业收入</td><td>29,180</td><td>27,320</td><td class="pos">+6.8%</td><td>25,560</td><td class="pos">+14.2%</td></tr>
+              <tr class="sub"><td>其中: 主营业务收入</td><td>28,640</td><td>26,820</td><td class="pos">+6.8%</td><td>25,020</td><td class="pos">+14.5%</td></tr>
+              <tr class="sub"><td>其他业务收入</td><td>540</td><td>500</td><td class="pos">+8.0%</td><td>540</td><td>+0.0%</td></tr>
+              <tr class="sec"><td>二. 营业成本</td><td>26,136</td><td>24,580</td><td class="neg">+6.3%</td><td>23,000</td><td class="neg">+13.6%</td></tr>
+              <tr class="tt"><td>　毛利</td><td>3,044</td><td>2,740</td><td class="pos">+11.1%</td><td>2,560</td><td class="pos">+18.9%</td></tr>
+              <tr><td><span class="pct">毛利率</span></td><td><span class="pct">10.4%</span></td><td><span class="pct">10.0%</span></td><td></td><td><span class="pct">10.0%</span></td><td></td></tr>
+              <tr class="sec"><td>三. 期间费用</td><td>1,532</td><td>1,420</td><td class="neg">+7.9%</td><td>1,380</td><td class="neg">+11.0%</td></tr>
+              <tr class="sub"><td>销售费用</td><td>840</td><td>780</td><td>+7.7%</td><td>740</td><td>+13.5%</td></tr>
+              <tr class="sub dark-row"><td>其中: 业务费 (BIZ_FEE)</td><td>8</td><td>12</td><td class="pos">-33.3%</td><td>-</td><td>新</td></tr>
+              <tr class="sub dark-row"><td>其中: 抹零 (ROUNDOFF)</td><td>1.2</td><td>1.4</td><td class="pos">-14.3%</td><td>-</td><td>新</td></tr>
+              <tr class="sub"><td>管理费用</td><td>462</td><td>440</td><td>+5.0%</td><td>420</td><td>+10.0%</td></tr>
+              <tr class="sub"><td>财务费用 (利息净)</td><td>230</td><td>200</td><td>+15.0%</td><td>220</td><td>+4.5%</td></tr>
+              <tr class="sec"><td>四. 套保盈亏</td><td class="pos">+50</td><td class="pos">+38</td><td></td><td class="pos">+82</td><td></td></tr>
+              <tr class="sub"><td>　现货段</td><td>+86</td><td>+62</td><td></td><td>+105</td><td></td></tr>
+              <tr class="sub"><td>　期货段</td><td class="neg">-54</td><td class="neg">-32</td><td></td><td class="neg">-38</td><td></td></tr>
+              <tr class="sub"><td>　基差贡献</td><td>+18</td><td>+8</td><td></td><td>+15</td><td></td></tr>
+              <tr class="tt"><td>　营业利润</td><td>1,562</td><td>1,358</td><td class="pos">+15.0%</td><td>1,262</td><td class="pos">+23.8%</td></tr>
+              <tr><td>　加: 营业外收入</td><td>12</td><td>8</td><td></td><td>10</td><td></td></tr>
+              <tr><td>　减: 营业外支出</td><td>22</td><td>18</td><td></td><td>20</td><td></td></tr>
+              <tr class="tt"><td>　利润总额 (EBT)</td><td>1,552</td><td>1,348</td><td class="pos">+15.1%</td><td>1,252</td><td class="pos">+24.0%</td></tr>
+              <tr><td>　减: 所得税</td><td>388</td><td>337</td><td></td><td>313</td><td></td></tr>
+              <tr class="grand"><td>五. 净利润</td><td>1,164</td><td>1,011</td><td>+15.1%</td><td>939</td><td>+24.0%</td></tr>
+              <tr><td><span class="pct">净利率</span></td><td><span class="pct">4.0%</span></td><td><span class="pct">3.7%</span></td><td></td><td><span class="pct">3.7%</span></td><td></td></tr>
+            </tbody>
+          </table>
+          <div style="padding: 12px 16px; font-size: 11px; color: var(--text-3); background: #fafbfc;">
+            单位: 万元 · 数据来源: ERP 总账 + 销售订单 + 套保头寸 · 已自动抵消关联交易 ¥382 万
+          </div>
+        </div>
+      </div>
+
+      <!-- 趋势图 + 结构图 -->
+      <div class="col">
+        <div class="card">
+          <div class="card-h"><h3>📈 近 12 月 · 营收 / 净利</h3></div>
+          <div class="card-b"><div id="ch_rev" class="chart"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-h"><h3>🧩 营业成本结构</h3></div>
+          <div class="card-b"><div id="ch_cost" class="chart" style="height:200px"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 健康度指标 + 行业对标 -->
+    <div class="row-2">
+      <div class="card">
+        <div class="card-h"><h3>🏥 财务健康度指标</h3></div>
+        <div class="card-b no-pad">
+          <table class="tb">
+            <thead><tr><th>指标</th><th class="num">本期</th><th class="num">同期</th><th>评价</th></tr></thead>
+            <tbody>
+              <tr><td>流动比率</td><td class="num">1.85</td><td class="num">1.72</td><td><span class="tag success">健康 (>1.5)</span></td></tr>
+              <tr><td>速动比率</td><td class="num">0.92</td><td class="num">0.84</td><td><span class="tag warning">略低 (<1.0)</span></td></tr>
+              <tr><td>资产负债率</td><td class="num">58.2%</td><td class="num">62.4%</td><td><span class="tag success">改善 (下降 4.2 pct)</span></td></tr>
+              <tr><td>应收周转天</td><td class="num">28 天</td><td class="num">32 天</td><td><span class="tag success">优于上期</span></td></tr>
+              <tr><td>存货周转天</td><td class="num">42 天</td><td class="num">38 天</td><td><span class="tag warning">需关注 (上升)</span></td></tr>
+              <tr><td>应付周转天</td><td class="num">22 天</td><td class="num">20 天</td><td><span class="tag muted">基本持平</span></td></tr>
+              <tr><td><b>现金循环天数 (CCC)</b></td><td class="num bold">48 天</td><td class="num">50 天</td><td><span class="tag success">改善 2 天</span></td></tr>
+              <tr><td>毛利率 (本期)</td><td class="num">10.4%</td><td class="num">10.0%</td><td><span class="tag success">略升</span></td></tr>
+              <tr><td>净利率 (本期)</td><td class="num">4.0%</td><td class="num">3.7%</td><td><span class="tag success">上升 0.3 pct</span></td></tr>
+              <tr><td>ROA (年化)</td><td class="num">8.2%</td><td class="num">6.4%</td><td><span class="tag success">显著改善</span></td></tr>
+              <tr><td>ROE (年化)</td><td class="num">18.4%</td><td class="num">14.8%</td><td><span class="tag success">显著改善</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h">
+          <h3>🎯 与行业对标 (钢贸 + 加工)</h3>
+          <div class="tools muted">数据来源 · 上海钢联 2026Q1</div>
+        </div>
+        <div class="card-b"><div id="ch_radar" class="chart" style="height:380px"></div></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="./assets/layout.js"></script>
+<script>
+  // 近 12 月营收
+  echarts.init(document.getElementById('ch_rev')).setOption({
+    tooltip: { trigger:'axis' },
+    legend: { top: 4 },
+    grid: { left: 50, right: 50, top: 40, bottom: 30 },
+    xAxis: { type:'category', data: ['6/25','7/25','8/25','9/25','10/25','11/25','12/25','1/26','2/26','3/26','4/26','5/26'] },
+    yAxis: [
+      { type:'value', name:'营收(万)' },
+      { type:'value', name:'净利(万)', position:'right', splitLine: {show:false} },
+    ],
+    series: [
+      { name:'营业收入', type:'bar', data:[24500, 25200, 24800, 26100, 26800, 25400, 26200, 25600, 25800, 26600, 27320, 29180], itemStyle:{color:'#1677ff'}, barWidth: 14 },
+      { name:'净利润', type:'line', yAxisIndex:1, data:[820, 880, 760, 920, 980, 850, 920, 880, 950, 980, 1011, 1164], smooth: true, lineStyle:{color:'#52c41a', width:2.5}, symbol:'circle', symbolSize:6, itemStyle:{color:'#52c41a'} },
+    ],
+  });
+
+  // 成本结构
+  echarts.init(document.getElementById('ch_cost')).setOption({
+    tooltip: { trigger:'item' },
+    legend: { bottom: 0, type:'scroll' },
+    series: [{
+      type:'pie', radius: ['38%','62%'], top: -20,
+      data: [
+        { value: 76.4, name: '钢材采购成本' },
+        { value: 8.2,  name: '加工成本 (含人工)' },
+        { value: 3.6,  name: '物流仓储' },
+        { value: 2.2,  name: '财务利息' },
+        { value: 2.8,  name: '销售费用' },
+        { value: 1.6,  name: '管理费用' },
+      ],
+      label: { formatter: '{b}\n{d}%', fontSize: 11 },
+    }],
+  });
+
+  // 对标雷达
+  echarts.init(document.getElementById('ch_radar')).setOption({
+    tooltip: {},
+    legend: { top: 4, data: ['我司', '行业均值', 'Top10 均值'] },
+    radar: {
+      indicator: [
+        { name: '毛利率', max: 20 },
+        { name: '净利率', max: 6 },
+        { name: '吨毛利(/200)', max: 1.5 },
+        { name: 'CCC 越低越好', max: 80 },
+        { name: 'ROE', max: 25 },
+        { name: '存货周转', max: 12 },
+      ],
+      shape: 'circle',
+    },
+    series: [{
+      type: 'radar',
+      data: [
+        { value: [10.4, 4.0, 0.93, 48, 18.4, 8.7], name: '我司', areaStyle:{opacity: 0.3, color: '#1677ff'} },
+        { value: [9.2, 3.2, 0.82, 56, 14.2, 7.4], name: '行业均值', areaStyle:{opacity: 0.2, color: '#fa8c16'} },
+        { value: [12.6, 5.2, 1.18, 38, 21.6, 10.2], name: 'Top10 均值', areaStyle:{opacity: 0.2, color: '#52c41a'} },
+      ],
+    }],
+  });
+</script>
+</body>
+</html>

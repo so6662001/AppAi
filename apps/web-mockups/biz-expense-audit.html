@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>业务费/抹零审计 · 钢铁 AI 经营分析平台</title>
+<link rel="stylesheet" href="./assets/shared.css">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  .gov-strip { background: linear-gradient(90deg, #001529 0%, #003a8c 100%); color: #fff; border-radius: 8px; padding: 14px 18px; display: flex; gap: 16px; align-items: center; margin-bottom: 16px; }
+  .gov-strip .ic { font-size: 28px; }
+  .gov-strip b { color: #ffd591; }
+  .gov-strip .badges { margin-left: auto; display: flex; gap: 8px; }
+  .gov-strip .badges span { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2); padding: 4px 10px; border-radius: 14px; font-size: 12px; }
+
+  .toggle-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
+  .toggle-card .stat { flex: 1; }
+  .toggle-card .stat .lb { font-size: 12px; color: var(--text-3); }
+  .toggle-card .stat .vl { font-size: 22px; font-weight: 700; }
+  .toggle-card.danger { border-color: #ffa39e; background: #fff1f0; }
+  .toggle-card.warning { border-color: #ffd591; background: #fff7e6; }
+  .switch { position: relative; display: inline-block; width: 44px; height: 22px; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .slider { position: absolute; cursor: pointer; inset: 0; background: #d9d9d9; border-radius: 22px; transition: .2s; }
+  .switch .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 2px; top: 2px; background: #fff; border-radius: 50%; transition: .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+  .switch input:checked + .slider { background: var(--success); }
+  .switch input:checked + .slider:before { transform: translateX(22px); }
+
+  .audit-row { padding: 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; background: #fff; }
+  .audit-row .h { display: flex; gap: 10px; align-items: center; }
+  .audit-row .h .id { font-family: monospace; color: var(--text-2); font-size: 12px; }
+  .audit-row .h .amt { margin-left: auto; font-weight: 700; font-size: 16px; color: var(--danger); }
+  .audit-row .meta { display: flex; gap: 16px; margin-top: 8px; font-size: 12px; color: var(--text-2); }
+  .audit-row .meta b { color: var(--text); }
+  .audit-row .footer { display: flex; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
+  .audit-row .reason { background: #fafbfc; padding: 8px 12px; border-radius: 4px; margin-top: 8px; font-size: 12px; color: var(--text-2); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell" data-active="biz-expense-audit.html" data-crumbs="合规与治理 <span class=&quot;sep&quot;>/</span> <span class=&quot;cur&quot;>业务费/抹零审计</span>" data-user="周某" data-role="财务总监 / 合规审计"></div>
+
+  <main class="main">
+
+    <div class="page-title">
+      <div>
+        <h1>业务费 / 抹零 / 返点 审计</h1>
+        <div class="desc">"暗规则"统一治理 · 启用必经审批 · 全链路留痕 · 数据脱敏</div>
+      </div>
+      <div class="flex gap-12">
+        <button class="btn">📋 审批历史</button>
+        <button class="btn">⚙️ 上限规则</button>
+        <button class="btn primary">📤 月度合规报告</button>
+      </div>
+    </div>
+
+    <!-- 治理通告条 -->
+    <div class="gov-strip">
+      <div class="ic">🛡️</div>
+      <div>
+        <div>当前 3 项功能租户已启用 · 启用后任何写入都会留下 <b>operator_id + audited_by + 时间戳</b> 痕迹</div>
+        <div style="color:#a8c7ff; font-size:12px; margin-top: 4px;">最近一次合规审计: 2026-05-20 · 审计人: 周某 · 状态 ✓ 通过</div>
+      </div>
+      <div class="badges">
+        <span>✔ 业务费</span>
+        <span>✔ 抹零</span>
+        <span>✘ 返点 (未启用)</span>
+      </div>
+    </div>
+
+    <!-- Feature Flag 3 张 -->
+    <div class="row-3 mb-16">
+      <div class="toggle-card warning">
+        <div class="stat">
+          <div class="lb">📋 业务费 (BIZ_FEE)</div>
+          <div class="vl">¥8,420 <span style="font-size:13px;color:var(--text-3);">/ 本月</span></div>
+          <div style="font-size: 11px; color:var(--text-3); margin-top: 2px;">17 笔 · 占毛利 0.8% · 限额 30,000</div>
+        </div>
+        <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+      </div>
+      <div class="toggle-card">
+        <div class="stat">
+          <div class="lb">💲 抹零 (ROUNDOFF)</div>
+          <div class="vl">¥1,180 <span style="font-size:13px;color:var(--text-3);">/ 本月</span></div>
+          <div style="font-size: 11px; color:var(--text-3); margin-top: 2px;">42 笔 · 占毛利 0.1% · 限额 5,000</div>
+        </div>
+        <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+      </div>
+      <div class="toggle-card">
+        <div class="stat">
+          <div class="lb">🎁 返点 (KICKBACK)</div>
+          <div class="vl" style="color:var(--text-3)">未启用</div>
+          <div style="font-size: 11px; color:var(--text-3); margin-top: 2px;">需要 CEO 审批方可启用</div>
+        </div>
+        <label class="switch"><input type="checkbox"><span class="slider"></span></label>
+      </div>
+    </div>
+
+    <!-- 中部图 + 待审批 -->
+    <div class="row mb-16" style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+
+      <div class="card">
+        <div class="card-h">
+          <h3>📊 近 30 天 · 业务费 / 抹零趋势</h3>
+          <div class="tools">
+            <span class="tag warning">业务费</span>
+            <span class="tag info">抹零</span>
+          </div>
+        </div>
+        <div class="card-b"><div id="ch_trend" class="chart"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-h">
+          <h3>⏳ 待审批 (3 笔)</h3>
+          <div class="tools"><span class="tag danger">需关注</span></div>
+        </div>
+        <div class="card-b">
+
+          <div class="audit-row" style="border-color: #ffa39e">
+            <div class="h">
+              <span class="tag danger">超审批阈值</span>
+              <span class="id">EXP-20260527-088</span>
+              <span class="amt">-¥4,800</span>
+            </div>
+            <div class="meta">
+              <span><b>类型:</b> 业务费</span>
+              <span><b>提单人:</b> 林某 (销售)</span>
+              <span><b>客户:</b> 江某机械</span>
+            </div>
+            <div class="reason">
+              <b>事由:</b> 客户高层来访接待 (北京 · 5/26-5/27 · 2 餐 + 1 晚住宿)
+            </div>
+            <div class="footer">
+              <button class="btn primary sm">✓ 批准</button>
+              <button class="btn danger sm">✗ 驳回</button>
+              <button class="btn sm">💬 询问</button>
+              <span class="muted" style="font-size:11px;margin-left:auto">超 ¥3,000 审批阈值 1,800</span>
+            </div>
+          </div>
+
+          <div class="audit-row" style="border-color: #ffd591">
+            <div class="h">
+              <span class="tag warning">阈值边缘</span>
+              <span class="id">EXP-20260526-066</span>
+              <span class="amt">-¥3,200</span>
+            </div>
+            <div class="meta">
+              <span><b>类型:</b> 业务费</span>
+              <span><b>提单人:</b> 王某 (销售)</span>
+              <span><b>客户:</b> 苏州某制品</span>
+            </div>
+            <div class="reason">
+              <b>事由:</b> 节假日礼品赠送 (40 盒中秋月饼)
+            </div>
+            <div class="footer">
+              <button class="btn primary sm">✓ 批准</button>
+              <button class="btn danger sm">✗ 驳回</button>
+              <button class="btn sm">💬 询问</button>
+            </div>
+          </div>
+
+          <div class="audit-row" style="border-color: #ffd591">
+            <div class="h">
+              <span class="tag warning">阈值边缘</span>
+              <span class="id">EXP-20260524-044</span>
+              <span class="amt">-¥1,180</span>
+            </div>
+            <div class="meta">
+              <span><b>类型:</b> 抹零</span>
+              <span><b>提单人:</b> 陈某 (销售)</span>
+              <span><b>订单:</b> SO20260524-027</span>
+            </div>
+            <div class="reason">
+              <b>事由:</b> 整单尾差 (客户提议 4,180,000 整, 实际 4,181,180)
+            </div>
+            <div class="footer">
+              <button class="btn primary sm">✓ 批准</button>
+              <button class="btn danger sm">✗ 驳回</button>
+              <button class="btn sm">💬 询问</button>
+              <span class="muted" style="font-size:11px;margin-left:auto">超占毛利比 2%</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 全量明细 -->
+    <div class="card">
+      <div class="card-h">
+        <h3>📋 全量明细 · 本月 59 笔</h3>
+        <div class="tools">
+          <button class="btn sm">类型筛选</button>
+          <button class="btn sm">销售员</button>
+          <button class="btn sm">客户</button>
+          <button class="btn sm">📥 导出</button>
+        </div>
+      </div>
+      <div class="card-b no-pad">
+        <table class="tb">
+          <thead>
+            <tr>
+              <th>单号</th><th>日期</th><th>类型</th><th>提单人</th><th>客户/订单</th>
+              <th class="num">金额</th><th>状态</th><th>影响提成</th><th>审计人</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>EXP-088</td><td>5/27</td><td><span class="tag warning">业务费</span></td>
+              <td>林某</td><td>江某机械</td>
+              <td class="num down">-¥4,800</td>
+              <td><span class="tag warning">待审批</span></td>
+              <td>✓ 是</td>
+              <td>-</td>
+            </tr>
+            <tr>
+              <td>EXP-082</td><td>5/24</td><td><span class="tag info">抹零</span></td>
+              <td>陈某</td><td>SO20260524-027</td>
+              <td class="num down">-¥80</td>
+              <td><span class="tag success">已批</span></td>
+              <td>✓ 是</td>
+              <td>周某 (5/25)</td>
+            </tr>
+            <tr>
+              <td>EXP-080</td><td>5/22</td><td><span class="tag warning">业务费</span></td>
+              <td>王某</td><td>南某五金</td>
+              <td class="num down">-¥1,200</td>
+              <td><span class="tag success">已批</span></td>
+              <td>✓ 是</td>
+              <td>陈总 (5/22)</td>
+            </tr>
+            <tr>
+              <td>EXP-078</td><td>5/20</td><td><span class="tag warning">业务费</span></td>
+              <td>赵某</td><td>湖州某加工</td>
+              <td class="num down">-¥500</td>
+              <td><span class="tag success">已批</span></td>
+              <td>✓ 是</td>
+              <td>陈总 (5/20)</td>
+            </tr>
+            <tr>
+              <td>EXP-072</td><td>5/18</td><td><span class="tag info">抹零</span></td>
+              <td>李某</td><td>SO20260518-018</td>
+              <td class="num down">-¥120</td>
+              <td><span class="tag success">已批</span></td>
+              <td>✓ 是</td>
+              <td>周某 (5/19)</td>
+            </tr>
+            <tr>
+              <td>EXP-068</td><td>5/15</td><td><span class="tag warning">业务费</span></td>
+              <td>林某</td><td>客户 A</td>
+              <td class="num down">-¥600</td>
+              <td><span class="tag success">已批</span></td>
+              <td>✓ 是</td>
+              <td>陈总 (5/16)</td>
+            </tr>
+            <tr>
+              <td>EXP-061</td><td>5/12</td><td><span class="tag info">抹零</span></td>
+              <td>钱某</td><td>SO20260512-066</td>
+              <td class="num down">-¥60</td>
+              <td><span class="tag success">已批</span></td>
+              <td>✗ 否 (人工标记)</td>
+              <td>周某 (5/13)</td>
+            </tr>
+            <tr>
+              <td>EXP-054</td><td>5/10</td><td><span class="tag warning">业务费</span></td>
+              <td>王某</td><td>江某机械</td>
+              <td class="num down">-¥800</td>
+              <td><span class="tag success">已批</span></td>
+              <td>✓ 是</td>
+              <td>陈总 (5/10)</td>
+            </tr>
+            <tr>
+              <td>EXP-048</td><td>5/08</td><td><span class="tag info">抹零</span></td>
+              <td>孙某</td><td>SO20260508-022</td>
+              <td class="num down">-¥40</td>
+              <td><span class="tag success">已批</span></td>
+              <td>✓ 是</td>
+              <td>周某 (5/9)</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="padding: 12px; text-align:center;">
+          <button class="btn">查看全部 59 笔 →</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script src="./assets/layout.js"></script>
+<script>
+  echarts.init(document.getElementById('ch_trend')).setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { top: 4 },
+    grid: { left: 50, right: 30, top: 40, bottom: 30 },
+    xAxis: { type:'category', data: Array.from({length: 30}, (_,i) => `5/${i+1}`) },
+    yAxis: { type:'value', axisLabel: { formatter: '¥{value}' } },
+    series: [
+      { name:'业务费', type:'bar', data:[200,0,500,0,800,300,0,1200,0,600,0,400,800,0,600,0,200,1200,0,500,0,800,0,1200,3200,0,4800], itemStyle:{color:'#fa8c16'}, barWidth: 12 },
+      { name:'抹零',   type:'bar', data:[80,40,0,60,0,80,40,0,120,80,0,40,80,60,40,0,80,120,60,40,80,40,60,80,40,60,1180], itemStyle:{color:'#13c2c2'}, barWidth: 12 },
+    ],
+  });
+</script>
+</body>
+</html>
