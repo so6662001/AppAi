@@ -254,6 +254,19 @@ services:
       - TZ=Asia/Shanghai
     restart: unless-stopped
 
+  # ----------------------- ERP 客户端防 RPA 服务端 (Python) -----------------------
+  client-guard-service:
+    build: ./services/client-guard-service
+    container_name: steel-client-guard
+    ports:
+      - "8980:8980"
+    environment:
+      - DB_URL_GOV=mysql+pymysql://root:steeldev@mysql:3306/steel_governance?charset=utf8mb4
+      - GUARD_APPROVAL_SECRET=${GUARD_APPROVAL_SECRET:-dev-guard-secret-change-me}
+      - TZ=Asia/Shanghai
+    depends_on: [mysql]
+    restart: unless-stopped
+
   # ----------------------- 预测 (Python) -----------------------
   forecast-service:
     build:

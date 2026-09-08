@@ -25,6 +25,7 @@
 19_biz_expense.sql             业务费/抹零/返点 (暗规则建模, 默认关闭)
 20_financial_statements.sql    标准财务三表 (利润/资产负债/现金流) + 员工净贡献
 21_role_insight.sql            岗位智能画像 + 行业基准 + 诊断规则 + 钻取路径 + 快照
+22_client_guard.sql            ERP 客户端防 RPA:策略 / 遥测事件 / 导出审批 / 配额账本 / 设备指令
 ```
 
 ## 数据库分布
@@ -72,6 +73,7 @@ mysql -h mysql-host -u root -p < 15_metric_pack.sql
 mysql -h mysql-host -u root -p < 16_tenant_config.sql   # 多租户 + 提成 + 客群
 mysql -h mysql-host -u root -p < 19_biz_expense.sql     # 暗规则上限规则部分
 mysql -h mysql-host -u root -p < 21_role_insight.sql    # 岗位画像 + 行业基准 + 钻取路径
+mysql -h mysql-host -u root -p < 22_client_guard.sql    # ERP 客户端防 RPA:策略 / 遥测 / 导出审批 / 配额账本
 
 # StarRocks (新增的多主体/期现/财务报表)
 mysql -h fe-host -P 9030 -u root -p < 17_legal_entity.sql

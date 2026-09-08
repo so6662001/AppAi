@@ -86,6 +86,13 @@ services:
     port: 8970
     env:
       ROLE_INSIGHTS_DIR: /opt/role_insights
+  client-guard-service:
+    enabled: true
+    replicas: 2
+    port: 8980
+    env:
+      DB_URL_GOV: mysql+pymysql://root:steeldev@mysql:3306/steel_governance?charset=utf8mb4
+      GUARD_APPROVAL_SECRET: __PROD_SECRET__
 
 # 基础设施
 mysql:

@@ -32,7 +32,11 @@ ddl/                             全量建表脚本
   ├─ 10_materialized_views.sql   StarRocks 物化视图
   └─ 11_briefing.sql             AI 早报 (MySQL)
 
+apps/erp-client-guard/           C# SDK:ERP 客户端防 RPA / 防爬取(检测 + 风险评分 + 水印/蜜罐 + 网格护盾)
+services/client-guard-service/   其服务端(策略下发 / 独立评分 / 导出审批 token),表见 ddl/22_client_guard.sql
+
 docs/
+  ├─ anti-rpa-design.md          防 RPA 威胁模型 / 五层防御 / 局限 / 接入步骤
   ├─ metric-registry/
   │   ├─ README.md               指标注册中心页面原型
   │   ├─ api.openapi.yaml        OpenAPI 接口契约

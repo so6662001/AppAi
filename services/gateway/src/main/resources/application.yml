@@ -64,6 +64,11 @@ spring:
           predicates: [Path=/v1/role-insight/**]
           filters:
             - RewritePath=/v1/role-insight/(?<seg>.*), /v1/$\{seg}
+        - id: client-guard
+          uri: ${CLIENT_GUARD_URL:http://client-guard-service:8980}
+          predicates: [Path=/v1/client-guard/**]
+          filters:
+            - RewritePath=/v1/client-guard/(?<seg>.*), /v1/$\{seg}
 
 auth:
   jwt-secret: ${JWT_SECRET:change-me-to-a-strong-secret-at-least-32-bytes-long}

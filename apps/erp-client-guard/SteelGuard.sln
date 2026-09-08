@@ -1,0 +1,50 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{D9611004-ABF4-449C-A9B6-82FAEEE9EE27}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SteelGuard.AntiRpa.Core", "src\SteelGuard.AntiRpa.Core\SteelGuard.AntiRpa.Core.csproj", "{C3DA532C-BDF4-4D91-B53F-9660B3113729}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SteelGuard.AntiRpa.Windows", "src\SteelGuard.AntiRpa.Windows\SteelGuard.AntiRpa.Windows.csproj", "{266A09A2-10EE-4E0F-803F-6FB92EA70A6D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SteelGuard.Demo", "src\SteelGuard.Demo\SteelGuard.Demo.csproj", "{B4E905D9-C227-41B8-B146-F1939FCD3557}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{D095C9B1-23AE-4084-BAC7-99D63955711C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SteelGuard.Tests", "tests\SteelGuard.Tests\SteelGuard.Tests.csproj", "{833C258F-A2FC-4D10-930D-889E09EB0C3A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C3DA532C-BDF4-4D91-B53F-9660B3113729}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C3DA532C-BDF4-4D91-B53F-9660B3113729}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C3DA532C-BDF4-4D91-B53F-9660B3113729}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C3DA532C-BDF4-4D91-B53F-9660B3113729}.Release|Any CPU.Build.0 = Release|Any CPU
+		{266A09A2-10EE-4E0F-803F-6FB92EA70A6D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{266A09A2-10EE-4E0F-803F-6FB92EA70A6D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{266A09A2-10EE-4E0F-803F-6FB92EA70A6D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{266A09A2-10EE-4E0F-803F-6FB92EA70A6D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B4E905D9-C227-41B8-B146-F1939FCD3557}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B4E905D9-C227-41B8-B146-F1939FCD3557}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B4E905D9-C227-41B8-B146-F1939FCD3557}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B4E905D9-C227-41B8-B146-F1939FCD3557}.Release|Any CPU.Build.0 = Release|Any CPU
+		{833C258F-A2FC-4D10-930D-889E09EB0C3A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{833C258F-A2FC-4D10-930D-889E09EB0C3A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{833C258F-A2FC-4D10-930D-889E09EB0C3A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{833C258F-A2FC-4D10-930D-889E09EB0C3A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{C3DA532C-BDF4-4D91-B53F-9660B3113729} = {D9611004-ABF4-449C-A9B6-82FAEEE9EE27}
+		{266A09A2-10EE-4E0F-803F-6FB92EA70A6D} = {D9611004-ABF4-449C-A9B6-82FAEEE9EE27}
+		{B4E905D9-C227-41B8-B146-F1939FCD3557} = {D9611004-ABF4-449C-A9B6-82FAEEE9EE27}
+		{833C258F-A2FC-4D10-930D-889E09EB0C3A} = {D095C9B1-23AE-4084-BAC7-99D63955711C}
+	EndGlobalSection
+EndGlobal
