@@ -105,26 +105,51 @@
 5. 所有客户端检测都可被逆向 —— 建议对 SDK 程序集做混淆 + 强命名,并把决策阈值放服务端。
 6. 合规:进程扫描仅读取进程名(不读取内存/文件),遥测不上传屏幕内容;需在员工手册中告知。
 
-## 3.1 远程桌面 (RDP / 终端服务器) 部署下的有效性
+## 3.1 远程桌面部署:自研 RDP 启动器 + 服务器会话 —— 双端联动
 
-客户端跑在 RDS 服务器会话里,用户从本地 PC 用 mstsc 登录。攻击工具可能在 **本地 PC**(操作 mstsc 窗口)或 **服务器会话内**(用户在会话里装了 RPA / WorkBuddy)。
+我们的实际部署形态:**用户在本地 PC 运行自研 VB.NET 启动器(内嵌 `MsRdpClient9NotSafeForScripting` ActiveX),由它登录 RDS 服务器,ERP 客户端在服务器会话里运行**。这与"用户自己开 mstsc"有本质区别 —— **本地这一端是我们自己的进程**,过去归为"防不住"的几项(本地截屏、本地注入输入、本地进程)都能在启动器里补上。因此 SDK 分成两端,共用同一套引擎与服务端:
 
-| 防御项 | 工具在本地 PC(隔着 RDP) | 工具在服务器会话内 |
+```
+本地 PC                                              RDS 服务器会话
+┌──────────────────────────────────┐                ┌──────────────────────────────────┐
+│ VB.NET 启动器                     │   RDP 通道      │ ERP 客户端 (WinForms)             │
+│  SteelGuard.AntiRpa.RdpLauncher  │ ─────────────► │  SteelGuard.AntiRpa.Windows       │
+│   · 低级钩子: 真实硬件输入 vs      │  StartProgram: │   · UIA 探针 / 网格护盾            │
+│     SendInput(INJECTED) ★         │  erp.exe       │   · 行为节律 / 翻页节拍            │
+│   · 本地进程扫描 (WorkBuddy/RPA) ★ │  --guard-      │   · 导出配额 / 审批 / 水印 / 蜜罐   │
+│   · 启动器窗口 WDA_EXCLUDEFROM    │  ticket=xxx    │   · WTSClientName → /session/bind │
+│     CAPTURE → 截屏得黑块 ★         │                │   · 绑定后沿用启动器 device_id      │
+│   · RDP 控件加固: 剪贴板/驱动器/   │                │                                    │
+│     端口/设备重定向 = 关 ★         │                │                                    │
+│   · 风险达阈值 → Disconnect()     │                │                                    │
+│   side=launcher                   │                │   side=remote  link_id=同一个       │
+└───────────────┬──────────────────┘                └───────────────┬──────────────────┘
+                │ /v1/session/launch (本地风险 → 票据 / 建议)              │ /v1/session/bind (票据 或 客户机名)
+                ▼                                                    ▼
+                          client-guard-service:双端事件按 link_id / device_id 合并为"一台物理设备"评分
+```
+
+★ = 只有"本地端是自己的进程"才做得到的项。
+
+| 防御项 | 旧结论(用户用 mstsc) | 现在(自研启动器) |
 |---|---|---|
-| 进程扫描 | ✗ 看不到本地 PC 的进程 | ✓(已限定只扫本会话,不误伤同机其他用户) |
-| 注入输入 (INJECTED) | ✗ RDP 输入本来就带注入标志,已自动降权 0.2 | ✗ 同上 |
-| UIA / WM_GETOBJECT 探针 + 隐藏控件树 | ✓ 天然免疫:RDP 不转发 UIA,本地工具只能看到位图 | ✓ 完全有效(WorkBuddy 的 `search_ui/inspect_ui` 拿不到单元格) |
-| 行为节律 / 瞬移点击 / 固定节拍翻页 | ✓ 事件在服务器端观测,视觉驱动的坐标点击必然"瞬移" | ✓ |
-| 防截屏 `WDA_EXCLUDEFROMCAPTURE` | ✗ **不可用**:RDP 画面本身就是屏幕捕获,开启后合法用户也看黑块(SDK 已默认在远程会话关闭) | ✗ 同上 |
-| 导出配额 / 审批 token / 水印 / 蜜罐 | ✓ 导出动作发生在服务器端,完全受控 | ✓ |
-| 剪贴板监听 | ✓(RDP 剪贴板重定向在服务器端也会触发 WM_CLIPBOARDUPDATE) | ✓ |
+| 本地截屏 / 录屏 / WorkBuddy `observe_ui` | ✗ 防不住,只能水印追责 | **✓ 启动器窗口设 `WDA_EXCLUDEFROMCAPTURE`**:远程画面在本地就是启动器窗口里的位图,截屏 / 录屏 / DXGI 桌面复制得到黑块;用户肉眼正常。(Win10 2004+;更老系统回落 `WDA_MONITOR`;手机拍屏仍防不住 → 会话内仍叠加可见水印) |
+| 本地 RPA / AI 代理的 SendInput | ✗ 隔着 RDP 全是注入标志 | **✓ 启动器进程内低级钩子看到的是本地真实输入**,WorkBuddy / 影刀 / UiPath 的 `SendInput` 带 `INJECTED`,权重恢复满值 |
+| 本地进程扫描 | ✗ 看不到 | **✓ 启动器扫本地进程**(`workbuddy / windows-bridge / uirobot / shadowbot ...`) |
+| 复制 → 本地粘贴 | 服务器端监听剪贴板节律 | **✓ 启动器在 Connect 前关闭 `RedirectClipboard`**(策略可设"低风险时允许",风险 ≥30 自动关闭) |
+| 导出 Excel → 落到本地盘 | 服务端配额 / 审批 | **✓ `RedirectDrives=false`**:文件只能留在服务器,下载必须走 ERP 受审批的通道;服务端配额 / 水印 / 蜜罐照旧 |
+| 用 mstsc / 第三方 RDP 客户端绕开启动器 | — | **✓ 服务端识别"未配对的远程会话"**(`UnpairedRemoteSession` +25;导出默认转人工审批,策略可改为直接拒绝) |
+| UIA 读控件树 / 行为节律 / 导出治理 | ✓ | ✓ 不变(在服务器端) |
+| 同一账号"启动器 + 远程会话"两路事件 | 会误报多设备并发 | ✓ 按 `link_id` / 沿用的 `device_id` / `WTSClientName` 归并为一台设备 |
 
-**结论:导出 Excel 这条路在 RDP 下管得住;截屏这条路(尤其本地 PC 截 mstsc 窗口)客户端 SDK 无法感知**,只能:
+**双端绑定流程**
 
-1. SDK 在远程会话中**强制显示可见屏幕水印**(用户名 / 工号 / 时间 / 设备,已默认开启),截出来的图可追责;
-2. 数据最小化:默认分页 ≤ 50 行、敏感列默认脱敏 + 点击显示(每次显示记录一次事件,频率异常即上报);
-3. RDS 侧策略:禁用剪贴板 / 驱动器重定向、只发布 RemoteApp 不发布完整桌面、RD Gateway 只允许受管终端 + MFA;
-4. 终端 DLP(本地 PC 装的准入 / DLP 客户端)接管"本地截屏"这一层 —— 这已超出 ERP 软件本身能做的范围。
+1. 启动器 `PrepareConnectAsync(rdp)`:带本地风险分调 `POST /v1/session/launch` → 服务端结合历史评分给出 `allow / clipboard_off / deny`,签发 5 分钟有效的 HMAC 启动票据(与审批 token 同格式,`data_set = launch:<link_id>`);
+2. 启动器加固控件(`AdvancedSettings9.Redirect* / EnableCredSspSupport / AuthenticationLevel=2`),并把票据写进 `SecuredSettings2.StartProgram = "erp.exe --guard-ticket=..."`(只发布程序不给桌面;RDS 需允许 initial program);
+3. 服务器会话里 ERP 的 `SteelGuardHost.Start` 检测到远程会话 → 自动从命令行取票据,连同 `WTSClientName / WTSClientAddress` 调 `POST /v1/session/bind` → 绑定成功后沿用启动器的 `device_id`;没有票据(老启动器)时按 **客户机名 = 启动器机器名** 在 10 分钟窗口内兜底匹配;都匹配不上 → 上报 `UnpairedRemoteSession`;
+4. 服务端对同一 `link_id` 的两路事件合并评分;任一端达 Critical → 指令 `lock` 同时下发两端:远程端锁 ERP,启动器 `Disconnect()` RDP。
+
+**仍然防不住的**:手机拍屏(靠会话内可见水印追责)、本地内核级输入驱动(靠服务器端行为节律)、启动器被逆向(建议混淆 + 强命名,阈值在服务端)。
 
 ## 3.2 针对腾讯 WorkBuddy("龙虾")
 
@@ -133,10 +158,10 @@ WorkBuddy 是本地运行的 AI 办公智能体(兼容 OpenClaw 技能),能执�
 | 它的手法 | 现有防护 |
 |---|---|
 | UIA 读控件树(`search_ui` 按文本找单元格) | `ShieldedDataGridView` 隐藏子树,只返回一个 "受保护的数据区域" 节点;`WM_GETOBJECT` 频率触发 `UiaProbing` |
-| 坐标点击 + 键入(`act`) | 非 RDP:`INJECTED` 标志直接命中;RDP:靠瞬移点击 / 节律 / 翻页节拍 |
-| 截图 → 视觉模型识别(`observe_ui`) | 非 RDP:防截屏属性 → 黑块;RDP:**防不住,靠可见水印 + 数据最小化** |
-| 点软件"导出 Excel"再用 Python 读文件 | 导出配额 / 审批 token / 隐形水印 / 蜜罐,与人手导出同等受控;服务端 `consume` 一次性 |
-| 进程本身 | 名单已含 `workbuddy / codebuddy / windows-bridge / pi-computer-use`(只在会话内运行时可见) |
+| 坐标点击 + 键入(`act`) | 本机直装 / 自研启动器:`INJECTED` 标志在本地端直接命中;裸 mstsc:靠服务器端瞬移点击 / 节律 / 翻页节拍 |
+| 截图 → 视觉模型识别(`observe_ui`) | 本机直装 / 自研启动器:防截屏属性 → 黑块;裸 mstsc:**防不住,靠可见水印 + 数据最小化** |
+| 点软件"导出 Excel"再用 Python 读文件 | 导出配额 / 审批 token / 隐形水印 / 蜜罐,与人手导出同等受控;服务端 `consume` 一次性;启动器关闭驱动器重定向后文件根本到不了本地 |
+| 进程本身 | 名单已含 `workbuddy / codebuddy / windows-bridge / pi-computer-use`(WorkBuddy 装在本地 PC 时由启动器扫到;装在会话内时由 ERP 扫到) |
 | 脱离 WorkBuddy 的固化脚本 / 独立 exe | 进程名不可靠 → 依赖 UIA 探针 + 行为分析 + 服务端配额兜底 |
 
 ## 4. 接入步骤 (WinForms 示例)
@@ -170,6 +195,35 @@ guard.RecordExport("sales_order", safe.Count, wm);
 ```
 
 完整目录与 WPF 适配说明见 [`apps/erp-client-guard/README.md`](../apps/erp-client-guard/README.md)。
+
+## 4.1 接入步骤 (自研 VB.NET RDP 启动器)
+
+引用 `SteelGuard.AntiRpa.RdpLauncher.dll`(net48 / net8.0-windows 均有)。RDP 控件用你现有的 `AxMsRdpClient9NotSafeForScripting` 即可,SDK 接受 AxHost 或 `GetOcx()`。完整可编译示例见 [`apps/erp-client-guard/samples/VbNetRdpLauncher`](../apps/erp-client-guard/samples/VbNetRdpLauncher)。
+
+```vb
+' 1. 窗体 Load:本地钩子 / 进程扫描 / 启动器窗口防截屏 / 遥测
+_guard = RdpLauncherGuard.Start(Me, New RdpLauncherOptions With {
+    .TenantId = 1001, .UserId = 42, .UserName = Environment.UserName,
+    .PolicyEndpoint = "https://api.example.com/v1/client-guard", .ApiToken = jwt,
+    .ErpStartProgram = "C:\SteelERP\SteelErp.exe", .ErpWorkDir = "C:\SteelERP"})
+AddHandler _guard.DisconnectRequested, Sub(s, reason) MessageBox.Show(reason)
+
+' 2. 连接前:申请票据 + 加固控件(剪贴板 / 驱动器 / 端口 / 设备 / CredSSP / StartProgram)
+Dim r = Await _guard.PrepareConnectAsync(AxRdp)
+If Not r.CanConnect Then MessageBox.Show(r.DenyReason) : Return
+AxRdp.Server = server : AxRdp.UserName = user
+AxRdp.AdvancedSettings9.ClearTextPassword = pwd
+AxRdp.Connect()
+
+' 3. OnLoginComplete:复核加固未被改动
+Private Sub AxRdp_OnLoginComplete(...) Handles AxRdp.OnLoginComplete
+    _guard.VerifyAfterConnect(AxRdp)
+End Sub
+```
+
+服务器端 ERP 不需要额外代码:`SteelGuardHost.Start` 在远程会话中自动读取 `--guard-ticket` 并完成绑定;若你的 ERP 有自己的命令行解析,把票据传给 `GuardOptions.LaunchTicket` 即可。
+
+RDS 侧需要:允许客户端指定初始程序(组策略"始终在连接时显示桌面" = 禁用),或把 ERP 发布为 RemoteApp 并在 `RemoteProgram.RemoteApplicationCmdLine` 里传票据。
 
 ## 5. 与现有平台的关系
 

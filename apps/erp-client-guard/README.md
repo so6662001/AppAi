@@ -18,28 +18,59 @@ apps/erp-client-guard/
 │   │   ├── Protection/Watermark.cs         可见水印 + 零宽字符隐形水印(编码/解码/剥离)
 │   │   ├── Protection/CanaryData.cs        确定性蜜罐行(HMAC 派生,可溯源)
 │   │   ├── Protection/DataMasker.cs        敏感列脱敏
-│   │   └── Telemetry/Telemetry.cs          事件模型 + HTTP 批量上报 / 本地 jsonl 兜底
+│   │   ├── Protection/GuardTicket.cs       启动票据:StartProgram 命令行 `--guard-ticket=` 生成 / 解析
+│   │   ├── Protection/RdpControlHardening.cs  MsRdpClient 控件加固(后期绑定,不依赖 Interop;关剪贴板/驱动器/端口/设备重定向、CredSSP、StartProgram、Disconnect)
+│   │   └── Telemetry/Telemetry.cs          事件模型(含 side / link_id / client_name)+ HTTP 批量上报 / 本地 jsonl 兜底
 │   ├── SteelGuard.AntiRpa.Windows/    net48 + net8.0-windows — Windows / WinForms 实现
 │   │   ├── Native/NativeMethods.cs         P/Invoke
 │   │   ├── Detection/InputInjectionMonitor.cs  WH_KEYBOARD_LL / WH_MOUSE_LL 读取 INJECTED 标志
 │   │   ├── Detection/UiAutomationProbe.cs      WM_GETOBJECT 统计 + UIAutomationCore.dll 加载检测 + 可屏蔽 UIA 根
-│   │   ├── Detection/EnvironmentProbe.cs       进程扫描 / RDP / 调试器 / 虚拟机
+│   │   ├── Detection/EnvironmentProbe.cs       进程扫描(仅本会话)/ RDP / 调试器 / 虚拟机
+│   │   ├── Detection/RemoteSessionInfo.cs      WTSQuerySessionInformation:客户机名 / 地址 / 协议 / 初始程序
 │   │   ├── Protection/ScreenCaptureGuard.cs    SetWindowDisplayAffinity 防截屏
 │   │   ├── Protection/ClipboardGuard.cs        WM_CLIPBOARDUPDATE 计数
 │   │   ├── Protection/ShieldedDataGridView.cs  网格护盾(隐藏 UIA 树 / 受控复制 / 显示层脱敏 / 水印)
-│   │   ├── GuardApiClient.cs               服务端 API 客户端 + 远程 token 校验
-│   │   └── SteelGuardHost.cs               门面:一行启动,Protect(form) / Decide / RequestExportAsync
+│   │   ├── GuardApiClient.cs               服务端 API 客户端 + 远程 token 校验 + /session/launch|bind
+│   │   └── SteelGuardHost.cs               门面:一行启动,Protect(form) / Decide / RequestExportAsync;远程会话自动用票据绑定启动器
+│   ├── SteelGuard.AntiRpa.RdpLauncher/  net48 + net8.0-windows — 自研 RDP 启动器侧(本地 PC)
+│   │   └── RdpLauncherGuard.cs             门面:Start(form) → PrepareConnectAsync(rdp) → VerifyAfterConnect;风险达阈值自动 Disconnect
 │   └── SteelGuard.Demo/               WinForms 演示程序
-└── tests/SteelGuard.Tests/            xUnit,67 个用例(Core 纯逻辑 + 跨语言 token 向量)
+├── samples/VbNetRdpLauncher/          VB.NET 启动器示例(AxHost 直接按 CLSID 承载,不依赖 AxInterop.MSTSCLib,Linux 上也能编译)
+└── tests/SteelGuard.Tests/            xUnit,79 个用例(Core 纯逻辑 + 跨语言 token 向量 + RDP 加固 / 票据)
 ```
 
 ## 构建 / 测试
 
 ```bash
-dotnet build SteelGuard.sln -c Release          # Linux/macOS 也能编译(EnableWindowsTargeting)
-dotnet test  tests/SteelGuard.Tests -c Release  # 67 passed
+dotnet build SteelGuard.sln -c Release          # Linux/macOS 也能编译(EnableWindowsTargeting),含 VB.NET 示例
+dotnet test  tests/SteelGuard.Tests -c Release  # 79 passed
 dotnet run --project src/SteelGuard.Demo        # 仅 Windows
 ```
+
+## 部署形态:自研 RDP 启动器(本地)+ ERP(RDS 会话内)
+
+两端各接一个门面,服务端把两路事件按 `link_id` 合并为一台物理设备评分(架构图与逐项有效性见设计文档 §3.1):
+
+| 端 | 程序集 | 做什么 |
+|---|---|---|
+| 本地 PC 启动器(VB.NET) | `SteelGuard.AntiRpa.RdpLauncher` | 真实硬件输入 vs `INJECTED`、本地进程扫描、启动器窗口防截屏(截屏 / 录屏 / WorkBuddy 得黑块)、Connect 前关闭剪贴板 / 驱动器 / 端口 / 设备重定向、申请启动票据写进 `StartProgram`、风险达阈值 `Disconnect()` |
+| RDS 会话内 ERP | `SteelGuard.AntiRpa.Windows` | UIA 探针 / 网格护盾 / 行为节律 / 导出治理;启动时读 `--guard-ticket` 调 `/session/bind`,沿用启动器 `device_id`;无票据按 `WTSClientName` 兜底;都对不上 → `UnpairedRemoteSession` |
+
+```vb
+' 启动器(VB.NET)—— 完整示例见 samples/VbNetRdpLauncher/MainForm.vb
+_guard = RdpLauncherGuard.Start(Me, New RdpLauncherOptions With {
+    .TenantId = 1001, .UserId = 42, .UserName = Environment.UserName,
+    .PolicyEndpoint = "https://api.example.com/v1/client-guard", .ApiToken = jwt,
+    .ErpStartProgram = "C:\SteelERP\SteelErp.exe", .ErpWorkDir = "C:\SteelERP"})
+AddHandler _guard.DisconnectRequested, Sub(s, reason) MessageBox.Show(reason)
+
+Dim r = Await _guard.PrepareConnectAsync(AxRdp)      ' 票据 + 加固;AxHost 或 GetOcx() 都可以
+If Not r.CanConnect Then MessageBox.Show(r.DenyReason) : Return
+AxRdp.Connect()
+' OnLoginComplete → _guard.VerifyAfterConnect(AxRdp)
+```
+
+会话内的 ERP 不需要额外代码;策略 `rdp` 段(`redirect_clipboard / redirect_drives / start_program_only / launcher_exclude_from_capture / disconnect_at_level / unpaired_remote_export ...`)由服务端下发。
 
 Demo 运行时可设置 `STEELGUARD_ENDPOINT=http://localhost:8980/v1`(经网关则为 `https://api/v1/client-guard`)与 `STEELGUARD_TOKEN=<jwt>` 联调服务端;不设置则为离线模式(内置默认策略 + `%LocalAppData%\SteelGuard\events.jsonl`)。
 
