@@ -1,0 +1,63 @@
+pack_id: PK_SHELL_OWNER
+name: 老板包-皮包/纯撮合
+description: 纯钢贸现货撮合 / 皮包公司视角 (无库存, 关注差价 + 资金回款)
+business_line: SHELL
+role_code: OWNER
+
+# 皮包公司精选指标 - 不依赖库存
+metrics:
+  # 撮合核心
+  - sales_amount
+  - sales_tonnage
+  - listed_gross_profit
+  - ton_gross_profit
+  - spread_per_ton
+  # 资金
+  - ar_amount
+  - ar_aging_91_180_amount
+  - ar_aging_181_365_amount
+  - prepay_amount
+  - capital_occupation
+  # 客户/供应商
+  - active_customer_count
+  - top10_customer_revenue_share
+  - top10_supplier_dependence
+  # 提成
+  - commission_total
+  - commission_to_gp_ratio
+  - rep_net_contribution
+  # 财务
+  - revenue
+  - net_profit
+  - cf_operating
+
+summary_kpis:
+  - sales_amount
+  - listed_gross_profit
+  - cf_operating
+  - net_profit
+
+briefing_cards:
+  - SUMMARY
+  - RISK
+  - CAPITAL          # 资金回款 Top
+  - ADVICE
+  - COMMISSION_SUMMARY
+
+recommended_questions:
+  - 本月撮合差价
+  - 本月撮合吨数
+  - Top10 客户应收账款
+  - Top5 上游供应商占比
+  - 业务员人均提成
+  - 抹零和业务费各多少
+  - 本月净利润对比上月
+  - 最大资金缺口在哪天
+  - 谁的客户回款最快
+  - 哪个客户已经一个月没下单了
+
+default_subscriptions:
+  - TPL_SHELL_DAILY_SPREAD
+  - TPL_SHELL_AR_TOP10
+
+default_dashboard: /pages/dashboard/shell_owner

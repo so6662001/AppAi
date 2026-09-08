@@ -1,0 +1,20 @@
+pack_id: PK_PROCESS_EQUIPMENT_MGR
+name: 设备经理包
+business_line: PROCESS
+role_code: EQUIPMENT_MGR
+metrics: [oee, availability, mttr, mtbf, equip_failure_count, changeover_time_avg, energy_per_ton]
+summary_kpis: [mtbf, mttr, equip_failure_count, availability]
+briefing_cards: [SUMMARY, ANOMALY]
+recommended_questions:
+  - 各设备 MTBF
+  - 平均修复时间
+  - 本周故障次数
+  - 换型时长 Top
+  - 设备可用率
+  - 哪台设备故障最多
+  - 能耗最高的设备
+  - 待保养清单
+  - 备件库存
+  - 故障原因 Top
+default_subscriptions: []
+default_dashboard: /pages/dashboard/equipment

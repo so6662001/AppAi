@@ -1,0 +1,69 @@
+## ============================================================
+## 物料 ABC / 长尾分析（6 个）
+## domain: ABC
+## 重算频率: 每周一 02:00 全量重算 dws_material_abc_monthly
+## 阈值规则:
+##   A: 累计销售额占比 0~80%
+##   B: 80~95%
+##   C: 95~100%
+##   D: 12 个月零销售（死货）
+## ============================================================
+domain: ABC
+version: 1
+extends: [_common.yaml, _dimensions.yaml]
+
+abc_thresholds:
+  A: 0.80
+  B: 0.95
+  C: 1.00
+  dead_no_sales_months: 12
+  dead_no_movement_days: 180
+
+metrics:
+
+  - { name: abc_class, label: ABC分类, code: M173,
+      fact: dws_material_abc_monthly,
+      formula: MAX(abc_class),
+      semantics: dimension, format: raw,
+      note: "派生维度属性, 可作为切片维度使用" }
+
+  - { name: a_class_skus_count, label: A类SKU数量, code: M174,
+      fact: dws_material_abc_monthly, filter: "abc_class='A'",
+      formula: COUNT(DISTINCT material_id),
+      format: count }
+
+  - { name: a_class_revenue_ratio, label: A类销售占比, code: M175,
+      fact: dws_material_abc_monthly,
+      formula: "SUM(CASE WHEN abc_class='A' THEN rolling_sales_amount END) / NULLIF(SUM(rolling_sales_amount),0)",
+      format: percent }
+
+  - { name: long_tail_skus_count, label: 长尾SKU数, code: M176,
+      synonyms: [C类D类数, 长尾SKU],
+      fact: dws_material_abc_monthly,
+      filter: "abc_class IN ('C','D')",
+      formula: COUNT(DISTINCT material_id), format: count }
+
+  - { name: long_tail_inv_amount, label: 长尾SKU库存金额, code: M177,
+      fact: dws_material_abc_monthly,
+      filter: "abc_class IN ('C','D')",
+      formula: SUM(on_hand_amount),
+      semantics: snapshot, time_agg: last, format: amount,
+      note: "长尾占用的库存金额, 越大越糟" }
+
+  - { name: dead_stock_amount, label: 死货库存金额, code: M178,
+      fact: dws_material_abc_monthly,
+      filter: "abc_class='D' OR last_move_days>180",
+      formula: SUM(on_hand_amount),
+      semantics: snapshot, time_agg: last, format: amount }
+
+## 自动洞察（每周一发送）
+weekly_insights:
+  - id: ABC_HEALTH
+    title: ABC 健康度
+    rule: "A 类销售占比 < 0.6 → 警告; > 0.85 → 警告(过度集中); 0.6~0.85 → 健康"
+  - id: DEAD_STOCK_TREND
+    title: 死货金额趋势
+    rule: "WoW change > 5% → 警告, 推送清呆清单 Top 50"
+  - id: A_CLASS_OOS_WARN
+    title: A 类 SKU 缺货预警
+    rule: "abc_class='A' AND stockout_risk_score > 0.6 → 推 Top 20"

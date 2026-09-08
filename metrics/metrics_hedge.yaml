@@ -1,0 +1,214 @@
+## ============================================================
+## 期现结合指标 (锁价/点价/套保/基差)
+## 仅当租户启用 ENABLE_HEDGE 时生效
+## ============================================================
+version: 1
+domain: hedge
+
+metrics:
+  # --- 锁价订单 ---
+  - name: locked_order_count
+    label: 锁价订单数
+    code: H001
+    formula: COUNT(DISTINCT order_no)
+    table: fact_locked_price_order
+    grain: [day, week, month]
+    unit: 单
+    requires_flag: ENABLE_HEDGE
+    applicable: [TRADE, MILL]
+    synonyms: [锁价单数量, 一口价订单数]
+
+  - name: locked_order_tonnage
+    label: 锁价订单吨数
+    code: H002
+    formula: SUM(lock_tonnage)
+    table: fact_locked_price_order
+    unit: 吨
+    requires_flag: ENABLE_HEDGE
+    applicable: [TRADE, MILL]
+
+  - name: locked_order_value
+    label: 锁价订单金额
+    code: H003
+    formula: SUM(lock_price * lock_tonnage)
+    table: fact_locked_price_order
+    unit: 元
+    requires_flag: ENABLE_HEDGE
+    applicable: [TRADE, MILL]
+
+  - name: locked_unhedged_tonnage
+    label: 已锁未对冲吨数
+    code: H004
+    description: 锁价但未在期货端做对冲, 价格敞口暴露
+    formula: SUM(CASE WHEN hedge_position_id IS NULL THEN lock_tonnage ELSE 0 END)
+    table: fact_locked_price_order
+    unit: 吨
+    requires_flag: ENABLE_HEDGE
+    severity: HIGH
+    applicable: [TRADE, MILL]
+
+  # --- 点价订单 ---
+  - name: spot_open_tonnage
+    label: 点价未点吨数
+    code: H010
+    description: 客户已下点价合同但尚未点价, 处于价格窗口期
+    formula: SUM(total_tonnage - picked_tonnage)
+    table: fact_spot_price_order
+    unit: 吨
+    requires_flag: ENABLE_HEDGE
+    applicable: [TRADE]
+    synonyms: [基差合同未点吨数, 待点价吨数]
+
+  - name: spot_pick_progress
+    label: 点价完成率
+    code: H011
+    formula: SUM(picked_tonnage) / NULLIF(SUM(total_tonnage),0)
+    unit: 比例
+    table: fact_spot_price_order
+    requires_flag: ENABLE_HEDGE
+    applicable: [TRADE]
+
+  - name: spot_avg_pick_basis
+    label: 点价加权平均基差
+    code: H012
+    formula: SUM(basis_at_pick * pick_tonnage) / NULLIF(SUM(pick_tonnage),0)
+    table: fact_spot_price_pick
+    unit: 元/吨
+    requires_flag: ENABLE_HEDGE
+    applicable: [TRADE]
+
+  # --- 套保头寸 ---
+  - name: hedge_net_position
+    label: 期货净持仓
+    code: H020
+    formula: SUM(net_position_tons)
+    table: dws_hedge_position_detail_daily
+    unit: 吨
+    requires_flag: ENABLE_HEDGE
+    applicable: [TRADE, MILL]
+
+  - name: hedge_realized_pnl
+    label: 套保已实现盈亏
+    code: H021
+    formula: SUM(realized_pnl_day)
+    table: dws_hedge_position_detail_daily
+    unit: 元
+    requires_flag: ENABLE_HEDGE
+    applicable: [TRADE, MILL]
+    synonyms: [期货平仓盈亏]
+
+  - name: hedge_unrealized_pnl
+    label: 套保浮动盈亏
+    code: H022
+    formula: SUM(unrealized_pnl_day)
+    table: dws_hedge_position_detail_daily
+    unit: 元
+    requires_flag: ENABLE_HEDGE
+    applicable: [TRADE, MILL]
+
+  - name: hedge_margin_used
+    label: 期货保证金占用
+    code: H023
+    formula: SUM(margin_occupied)
+    table: dws_hedge_position_detail_daily
+    unit: 元
+    requires_flag: ENABLE_HEDGE
+    applicable: [TRADE, MILL]
+
+  - name: net_exposure_after_hedge
+    label: 套保后净敞口
+    code: H024
+    description: 现货持仓 - 期货空单 (绝对值)
+    formula: ABS(spot_tonnage - short_tonnage)
+    table: dws_hedge_daily
+    unit: 吨
+    requires_flag: ENABLE_HEDGE
+    severity: HIGH
+    applicable: [TRADE, MILL]
+
+  # --- 基差 ---
+  - name: basis_current
+    label: 当前基差
+    code: H030
+    formula: AVG(basis)
+    table: dws_basis_daily
+    unit: 元/吨
+    requires_flag: ENABLE_HEDGE
+    applicable: [TRADE, MILL]
+
+  - name: basis_rate
+    label: 基差率
+    code: H031
+    formula: AVG(basis_rate)
+    table: dws_basis_daily
+    unit: 比例
+    requires_flag: ENABLE_HEDGE
+    applicable: [TRADE, MILL]
+
+  - name: basis_invert_days
+    label: 基差倒挂天数
+    code: H032
+    formula: SUM(CASE WHEN basis < 0 THEN 1 ELSE 0 END)
+    table: dws_basis_daily
+    unit: 天
+    requires_flag: ENABLE_HEDGE
+    severity: MEDIUM
+    applicable: [TRADE, MILL]
+
+  # --- PnL 拆分 ---
+  - name: spot_pnl
+    label: 现货段盈亏
+    code: H040
+    formula: SUM(spot_pnl)
+    table: dws_hedge_pnl_split_daily
+    unit: 元
+    requires_flag: ENABLE_HEDGE
+    applicable: [TRADE, MILL]
+
+  - name: futures_pnl
+    label: 期货段盈亏
+    code: H041
+    formula: SUM(futures_pnl)
+    table: dws_hedge_pnl_split_daily
+    unit: 元
+    requires_flag: ENABLE_HEDGE
+    applicable: [TRADE, MILL]
+
+  - name: basis_pnl
+    label: 基差贡献盈亏
+    code: H042
+    formula: SUM(basis_pnl)
+    table: dws_hedge_pnl_split_daily
+    unit: 元
+    requires_flag: ENABLE_HEDGE
+    applicable: [TRADE, MILL]
+
+  - name: combined_hedge_pnl
+    label: 期现总盈亏
+    code: H043
+    formula: SUM(combined_pnl)
+    table: dws_hedge_pnl_split_daily
+    unit: 元
+    requires_flag: ENABLE_HEDGE
+    applicable: [TRADE, MILL]
+
+action_rules:
+  - id: HEDGE_UNHEDGED_TOO_HIGH
+    title: 已锁价未对冲敞口偏大
+    severity: HIGH
+    when: locked_unhedged_tonnage > 500
+    advice: "已锁价 {locked_unhedged_tonnage:.0f} 吨未做期货对冲, 单边价格敞口偏大, 建议立即开仓"
+    suggested_actions:
+      - {action: "查看锁价单列表", url: "/hedge/locked-orders?unhedged=1"}
+
+  - id: HEDGE_BASIS_INVERT
+    title: 基差倒挂
+    severity: MEDIUM
+    when: basis_current < -50
+    advice: "{basis_current:.0f} 元/吨基差倒挂, 现货低于期货, 优先减仓/反向套利"
+
+  - id: HEDGE_NET_EXPOSURE_BREACH
+    title: 套保后净敞口超限
+    severity: HIGH
+    when: net_exposure_after_hedge > 2000
+    advice: "净敞口 {net_exposure_after_hedge:.0f} 吨已突破公司限额, 立即对冲或减仓"

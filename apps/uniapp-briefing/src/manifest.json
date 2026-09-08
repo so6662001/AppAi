@@ -1,0 +1,21 @@
+{
+  "name": "steel-ai-briefing",
+  "appid": "__UNI__BRIEF01",
+  "description": "钢铁经营 AI 早报",
+  "versionName": "0.1.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "app-plus": {
+    "compatible": { "ignoreVersion": true }
+  },
+  "h5": {
+    "router": { "mode": "hash" },
+    "devServer": { "port": 5174 }
+  },
+  "mp-weixin": {
+    "appid": "wx0000000000000000",
+    "setting": { "urlCheck": false, "es6": true, "minified": true },
+    "usingComponents": true
+  },
+  "vueVersion": "3"
+}

@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>我的画像 · 销售员 AI 教练</title>
+<link rel="stylesheet" href="./assets/shared.css">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  .rep-hero {
+    background: linear-gradient(135deg, #1677ff 0%, #722ed1 100%);
+    color: #fff; padding: 28px; border-radius: 14px;
+    display: grid; grid-template-columns: 160px 1fr; gap: 28px; align-items: center;
+    box-shadow: var(--shadow-md); margin-bottom: 16px;
+  }
+  .rep-hero .avatar-big {
+    width: 130px; height: 130px; border-radius: 50%;
+    background: linear-gradient(135deg, #fa8c16, #f5222d);
+    display: grid; place-items: center;
+    font-size: 56px; font-weight: 800; color: #fff;
+    border: 5px solid rgba(255,255,255,.2);
+    position: relative;
+  }
+  .rep-hero .avatar-big .rank-badge {
+    position: absolute; bottom: -6px; right: -6px;
+    background: #faad14; color: #fff; border-radius: 16px;
+    padding: 2px 10px; font-size: 11px; font-weight: 700;
+    border: 2px solid #fff;
+  }
+  .rep-hero .nm { font-size: 24px; font-weight: 700; }
+  .rep-hero .nm small { font-size: 13px; font-weight: 400; color: #d6e4ff; margin-left: 8px; }
+  .rep-hero .stats-row { display: flex; gap: 28px; margin-top: 16px; }
+  .rep-hero .stats-row .s .l { color: #d6e4ff; font-size: 12px; }
+  .rep-hero .stats-row .s .v { font-size: 22px; font-weight: 700; }
+  .rep-hero .ai-greet { background: rgba(255,255,255,.12); padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-top: 12px; }
+  .rep-hero .ai-greet b { color: #ffd591; }
+
+  .peer-rank {
+    background: #fff; border-radius: 8px; padding: 16px; border: 1px solid var(--border);
+  }
+  .peer-rank .me { background: linear-gradient(90deg, #fff7e6, #fff); padding: 10px 14px; border-radius: 6px; border: 2px solid #faad14; }
+
+  .ai-coach {
+    background: linear-gradient(135deg, #f0f5ff, #fff);
+    border-radius: 12px; padding: 20px;
+    border: 1px solid #d6e4ff;
+  }
+  .ai-coach .head { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; }
+  .ai-coach .av { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #722ed1, #1677ff); color: #fff; display: grid; place-items: center; font-weight: 700; flex-shrink: 0; }
+  .ai-coach .qa { background: #fff; padding: 12px 14px; border-radius: 8px; margin-bottom: 8px; border: 1px solid var(--border); }
+  .ai-coach .qa .q { color: var(--primary); font-weight: 600; font-size: 13px; }
+  .ai-coach .qa .a { font-size: 12px; color: var(--text-2); margin-top: 6px; line-height: 1.6; }
+  .ai-coach .ask-bar { background: #fff; border-radius: 8px; padding: 8px; display: flex; gap: 6px; margin-top: 10px; border: 1px solid var(--border); }
+  .ai-coach .ask-bar input { border: 0; flex: 1; padding: 6px 10px; outline: 0; font-size: 13px; }
+
+  .finding {
+    background: #fff; border-left: 4px solid var(--border);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px; margin-bottom: 10px;
+  }
+  .finding.HIGH { border-left-color: var(--danger); }
+  .finding.MEDIUM { border-left-color: var(--warning); }
+  .finding.LOW { border-left-color: var(--success); }
+  .finding .h { display: flex; gap: 10px; align-items: center; }
+  .finding .h .cat { font-size: 10px; padding: 1px 7px; border-radius: 4px; font-weight: 600; }
+  .finding .h .cat.RISK { background:#fff1f0; color:var(--danger); }
+  .finding .h .cat.WEAKNESS { background:#fff7e6; color:var(--warning); }
+  .finding .h .cat.OPPORTUNITY { background:#e6fffb; color:var(--info); }
+  .finding .h .cat.COMPLIANCE { background:#f9f0ff; color:#722ed1; }
+  .finding .h .ti { font-weight: 600; font-size: 14px; }
+  .finding .h .imp { margin-left: auto; font-size: 11px; color: var(--text-3); }
+  .finding .desc { font-size: 12px; color: var(--text-2); margin-top: 6px; line-height: 1.6; }
+  .finding .desc b { color: var(--text); }
+  .finding .impact { background: #fff7e6; padding: 6px 10px; border-radius: 4px; font-size: 12px; color: var(--text-2); margin-top: 8px; }
+  .finding .impact b { color: var(--warning); }
+  .finding .actions { display: flex; gap: 6px; margin-top: 10px; }
+
+  .badge-ring { width: 76px; }
+  .small-ring { display: inline-block; width: 56px; height: 56px; position: relative; }
+  .small-ring svg { transform: rotate(-90deg); }
+  .small-ring .v { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: grid; place-items: center; font-weight: 700; font-size: 16px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell" data-active="role-insight-sales-rep.html" data-crumbs="人与提成 <span class=&quot;sep&quot;>/</span> <span class=&quot;cur&quot;>我的画像</span>" data-user="林某" data-role="销售经理 · 工号 200237"></div>
+
+  <main class="main">
+
+    <!-- Hero -->
+    <div class="rep-hero">
+      <div class="avatar-big">林<div class="rank-badge">⭐ Top 25%</div></div>
+      <div>
+        <div class="nm">林某 <small>工号 200237 · 销售经理 · 华东大区 · 入司 3 年</small></div>
+        <div class="stats-row">
+          <div class="s"><div class="l">本月健康度</div><div class="v">68 <span style="font-size:12px;color:#d6e4ff">/ 100 (B)</span></div></div>
+          <div class="s"><div class="l">挂牌毛利</div><div class="v">¥84,000</div></div>
+          <div class="s"><div class="l">实际提成</div><div class="v">¥18,720</div></div>
+          <div class="s"><div class="l">销售吨数</div><div class="v">462</div></div>
+          <div class="s"><div class="l">同事排名</div><div class="v">3 / 12</div></div>
+        </div>
+        <div class="ai-greet">
+          ☀️ 早安林经理, 我帮您看了下本月业绩, 您 <b>整体处于团队前 25%, 健康度 B 良好</b>, 但有 <b>3 件事</b>可以更好做: 提升吨毛利 (-16% vs 团队均值), 改善间销结构 (45% 偏高), 催收 28 万老应收.
+          做完这 3 件, 本月预计可<b>多挣 ¥9,200 提成</b>.
+        </div>
+      </div>
+    </div>
+
+    <!-- 主体: 左侧 AI 教练 + 同事PK | 右侧 5 条 finding -->
+    <div class="row mb-16" style="display: grid; grid-template-columns: 1fr 1.4fr; gap: 16px;">
+
+      <div class="col">
+
+        <!-- 同事 PK -->
+        <div class="peer-rank">
+          <div class="card-h" style="border:0; padding: 0 0 12px;">
+            <h3>🏆 团队 PK · 本月吨毛利 (TGP)</h3>
+          </div>
+          <div id="ch_pk" class="chart" style="height: 280px"></div>
+          <div class="muted" style="font-size: 12px; padding-top: 8px;">
+            团队均值 <b style="color:var(--text)">¥186</b> · 您 <b style="color:var(--danger)">¥156</b> · 差距 <b style="color:var(--danger)">¥30</b><br>
+            <b style="color:var(--success)">Top 1 王某 ¥232</b> — 您与他差 ¥76 (-33%)
+          </div>
+        </div>
+
+        <!-- AI 教练 -->
+        <div class="ai-coach">
+          <div class="head">
+            <div class="av">AI</div>
+            <div>
+              <div class="bold">您的 AI 教练 · 24h 在线</div>
+              <div class="muted" style="font-size:11px">基于您的画像 + 王某等 Top 销售员玩法</div>
+            </div>
+          </div>
+
+          <div class="qa">
+            <div class="q">Q · 我吨毛利为什么比同事低?</div>
+            <div class="a">A · 看您 14 单数据, 主要原因 2 点: <b>① 间销占比 45% (团队均值 22%)</b>, 间销系数 0.5 直接拉低提成. <b>② 客户 [湖州某加工] 单次让价 60 元/吨</b>, 共影响 8 单. <button class="btn ghost sm" style="padding:0;height:auto">→ 看这 8 单明细</button></div>
+          </div>
+
+          <div class="qa">
+            <div class="q">Q · 怎么把客户从走量型转利润型?</div>
+            <div class="a">A · 3 步: 给客户 <b>"产地+材质组合套餐"</b>而非单点报价 → 把"价格博弈"变"方案博弈"; 改 <b>结算方式</b>: T+60 → T+30 给小折扣; 主动 <b>问需求</b>而非问价格. 👉 <button class="btn ghost sm" style="padding:0;height:auto">看王某的具体话术</button></div>
+          </div>
+
+          <div class="qa">
+            <div class="q">Q · 我老应收 28 万怎么催不伤客情?</div>
+            <div class="a">A · 您这 28 万分布在 3 个客户, 其中 [常州某机械] 18 万账龄 220 天, 实在客户. 建议先 <b>电话客气问下结账周期</b>, 别直接催, 顺便聊下一批订单需求, 一举两得. 我可以帮您拟好话术. 👉 <button class="btn ghost sm" style="padding:0;height:auto">让 AI 拟话术</button></div>
+          </div>
+
+          <div class="ask-bar">
+            <input placeholder="问我任何工作问题: 客户难谈 / 不会催收 / 怎么开新客...">
+            <button class="btn primary sm">问 AI</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 右侧: 5 条 finding 待办 -->
+      <div class="card">
+        <div class="card-h">
+          <h3>📋 您本月的 5 个改进点 (AI 自动诊断)</h3>
+          <div class="tools muted">点击行动按钮即可一键执行</div>
+        </div>
+        <div class="card-b">
+
+          <div class="finding HIGH">
+            <div class="h">
+              <span class="sev HIGH"></span>
+              <span class="cat WEAKNESS">WEAKNESS</span>
+              <span class="ti">您吨毛利明显低于团队均值</span>
+              <span class="imp">-18 分</span>
+            </div>
+            <div class="desc">您本月吨毛利 <b>¥156/吨</b>, 团队均值 <b>¥186/吨</b>, 差距 <b>16%</b></div>
+            <div class="impact">💡 若达均值, 本月可多挣提成 <b>¥13,800</b></div>
+            <div class="actions">
+              <button class="btn primary sm">看哪些单拉低均值</button>
+              <button class="btn sm">💬 AI 帮我分析</button>
+              <button class="btn sm">看 Top 同事玩法</button>
+            </div>
+          </div>
+
+          <div class="finding HIGH">
+            <div class="h">
+              <span class="sev HIGH"></span>
+              <span class="cat RISK">RISK</span>
+              <span class="ti">您的老应收偏多 (181 天+)</span>
+              <span class="imp">-12 分</span>
+            </div>
+            <div class="desc">您 181+ 账龄应收 <b>¥280,000</b>, 占总应收 <b>18%</b></div>
+            <div class="impact">💡 按 30% 坏账率, 潜在亏损 <b>¥84,000</b>, 直接扣您提成</div>
+            <div class="actions">
+              <button class="btn primary sm">📨 一键催收短信</button>
+              <button class="btn sm">看客户清单</button>
+              <button class="btn sm">提交回款承诺</button>
+            </div>
+          </div>
+
+          <div class="finding MEDIUM">
+            <div class="h">
+              <span class="sev MEDIUM"></span>
+              <span class="cat OPPORTUNITY">OPPORTUNITY</span>
+              <span class="ti">间销占比偏高 - 提成被打 5 折</span>
+              <span class="imp">-10 分</span>
+            </div>
+            <div class="desc">您间销订单占 <b>45%</b>, 提成系数仅 0.5</div>
+            <div class="impact">💡 若全部改为直销, 本月可多挣 <b>¥4,800</b></div>
+            <div class="actions">
+              <button class="btn primary sm">哪些单是间销</button>
+              <button class="btn sm">💬 AI 教我谈直销</button>
+            </div>
+          </div>
+
+          <div class="finding MEDIUM">
+            <div class="h">
+              <span class="sev MEDIUM"></span>
+              <span class="cat RISK">RISK</span>
+              <span class="ti">您的客户过于集中</span>
+              <span class="imp">-8 分</span>
+            </div>
+            <div class="desc">您前 2 大客户占 <b>74%</b> 销售额, 主要是 <b>客户A (42%)</b></div>
+            <div class="impact">💡 Top1 客户停单, 下月预计少 <b>¥760,000</b>, 提成少 <b>¥4,200</b></div>
+            <div class="actions">
+              <button class="btn primary sm">💬 AI 推荐潜在新客户</button>
+              <button class="btn sm">看客户结构</button>
+            </div>
+          </div>
+
+          <div class="finding LOW">
+            <div class="h">
+              <span class="sev LOW"></span>
+              <span class="cat OPPORTUNITY">OPPORTUNITY</span>
+              <span class="ti">本季度尚未开发新客户</span>
+              <span class="imp">-5 分</span>
+            </div>
+            <div class="desc">您本季度未开发新客户, 同组员均开 <b>2.4 个</b></div>
+            <div class="impact">💡 客户池在缩小, 长期收入下滑风险</div>
+            <div class="actions">
+              <button class="btn primary sm">💬 AI 推荐潜在客户</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部: 我的画像变化 + 推荐学习 -->
+    <div class="row-2">
+
+      <div class="card">
+        <div class="card-h">
+          <h3>📈 我的 6 月画像变化</h3>
+        </div>
+        <div class="card-b"><div id="ch_history" class="chart" style="height: 240px"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-h">
+          <h3>📚 推荐学习 (个性化)</h3>
+          <div class="tools muted">根据您的短板自动推荐</div>
+        </div>
+        <div class="card-b" style="display: flex; flex-direction: column; gap: 10px;">
+          <a href="#" style="padding: 12px 14px; background: linear-gradient(135deg, #fff7e6, #fff); border-radius: 8px; border-left: 4px solid var(--warning); color: var(--text);">
+            <div class="bold">📘 怎么把走量型客户变利润型 (3 步法)</div>
+            <div class="muted" style="font-size: 11px; margin-top: 4px;">针对您的<b>客户A</b>等走量客户, 王某曾用此法 30 天涨吨毛利 ¥40</div>
+          </a>
+          <a href="#" style="padding: 12px 14px; background: linear-gradient(135deg, #fff1f0, #fff); border-radius: 8px; border-left: 4px solid var(--danger); color: var(--text);">
+            <div class="bold">📘 钢贸催收 5 个不伤客情的技巧</div>
+            <div class="muted" style="font-size: 11px; margin-top: 4px;">针对您 28 万老应收, 30 分钟视频 + 实战 SOP</div>
+          </a>
+          <a href="#" style="padding: 12px 14px; background: linear-gradient(135deg, #e6fffb, #fff); border-radius: 8px; border-left: 4px solid var(--info); color: var(--text);">
+            <div class="bold">📘 5 个开发钢贸新客户的渠道</div>
+            <div class="muted" style="font-size: 11px; margin-top: 4px;">本季您未开新客, 内含 AI 工具 + 经典话术</div>
+          </a>
+          <a href="#" style="padding: 12px 14px; background: linear-gradient(135deg, #f9f0ff, #fff); border-radius: 8px; border-left: 4px solid #722ed1; color: var(--text);">
+            <div class="bold">📘 间销转直销谈判技巧</div>
+            <div class="muted" style="font-size: 11px; margin-top: 4px;">针对您 45% 间销率, 改善后多挣 ¥4,800/月</div>
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="./assets/layout.js"></script>
+<script>
+  // 团队 PK
+  echarts.init(document.getElementById('ch_pk')).setOption({
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    grid: { left: 50, right: 50, top: 16, bottom: 30 },
+    xAxis: { type: 'value', axisLabel: { formatter: '¥{value}' } },
+    yAxis: { type: 'category', data: ['孙某','钱某','刘某','赵某','李某','陈某','王某','林某 (您)','刘经理','张某','陈经理','吴某'].reverse() },
+    series: [{
+      type: 'bar', data: [122, 130, 138, 148, 162, 168, 176, 156, 200, 212, 224, 232].reverse(),
+      itemStyle: { color: (p) => p.value === 156 ? '#fa8c16' : '#1677ff' },
+      label: { show: true, position: 'right', formatter: '¥{c}', fontSize: 11 },
+      barWidth: 16,
+      markLine: { data: [{type: 'average', name: '团队均值'}], lineStyle: { color: '#52c41a' } },
+    }],
+  });
+
+  // 6 月画像变化
+  echarts.init(document.getElementById('ch_history')).setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { top: 4 },
+    grid: { left: 50, right: 30, top: 40, bottom: 30 },
+    xAxis: { type:'category', data: ['12月','1月','2月','3月','4月','5月'] },
+    yAxis: [
+      { type:'value', name: '健康度', min: 40, max: 100 },
+      { type:'value', name: '提成(元)', position: 'right', splitLine:{show:false} },
+    ],
+    series: [
+      { name: '健康度', type:'line', data: [55, 58, 62, 64, 66, 68], smooth: true, lineStyle: {width:3, color:'#1677ff'}, itemStyle:{color:'#1677ff'} },
+      { name: '吨毛利', type:'line', data: [128, 142, 150, 148, 152, 156], smooth: true, lineStyle: {color:'#52c41a', width:2}, itemStyle: {color:'#52c41a'} },
+      { name: '提成', type: 'bar', yAxisIndex: 1, data: [12800,14200,13600,15800,17280,18720], itemStyle: {color: '#faad14aa'}, barWidth: 20 },
+    ],
+  });
+</script>
+</body>
+</html>

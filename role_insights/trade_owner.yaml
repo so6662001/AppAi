@@ -1,0 +1,108 @@
+## ============================================================
+## 钢贸老板 (TRADE_OWNER) 岗位画像配置
+## ============================================================
+role_code: TRADE_OWNER
+role_name: 钢贸老板
+business_line: TRADE
+level: C_LEVEL
+focus_areas: [sales, capital, risk, profit, hedge]
+
+# 健康度评分的核心 KPI + 权重 (总和 = 1.0)
+primary_kpis:
+  - {code: sales_amount,          weight: 0.10, direction: HIGHER, label: 销售额}
+  - {code: ton_gross_profit,      weight: 0.20, direction: HIGHER, label: 吨毛利}
+  - {code: net_margin_pct,        weight: 0.20, direction: HIGHER, label: 净利率, benchmark: true}
+  - {code: capital_occupation,    weight: 0.10, direction: LOWER,  label: 资金占用}
+  - {code: customer_risk_score,   weight: 0.15, direction: LOWER,  label: 客户风险分}
+  - {code: combined_hedge_pnl,    weight: 0.10, direction: HIGHER, label: 期现 PnL}
+  - {code: ccc_days,              weight: 0.15, direction: LOWER,  label: 现金循环天, benchmark: true}
+
+# 诊断规则
+rules:
+  - id: TR_OWNER_NET_MARGIN_LOW
+    category: WEAKNESS
+    severity: HIGH
+    title: 净利率低于行业中位数
+    when: "net_margin_pct < benchmark('TRADE','net_margin_pct').p50"
+    finding: "公司净利率 {net_margin_pct:.1%}, 行业中位 {p50:.1%}, 差距 {gap:.1%}"
+    impact: "若达到行业中位, 按当前营收年化可多挣 {potential:,.0f} 元"
+    actions:
+      - {label: AI 分析归因, type: chat, prompt: "为什么我们净利率低于同行?"}
+      - {label: 看利润表, type: navigate, path: /finance-statements}
+    score_impact: 18
+
+  - id: TR_OWNER_CAPITAL_TOP_CONC
+    category: RISK
+    severity: HIGH
+    title: 资金被少数客户占用
+    when: "top10_customer_capital_share > 0.65"
+    finding: "Top10 客户占用了 {top10_share:.0%} 资金 ({top10_amount:,.0f}), 集中度风险"
+    impact: "若 Top1 客户违约, 直接损失 {top1_amount:,.0f}, 占净资产 {ratio:.0%}"
+    actions:
+      - {label: 看客户清单, type: navigate, path: /dashboard-owner}
+      - {label: 一键提交风险审查, type: action, handler: createRiskReview}
+    score_impact: 15
+
+  - id: TR_OWNER_HEDGE_GAP
+    category: RISK
+    severity: HIGH
+    title: 锁价单未对冲过多 (单边敞口)
+    when: "locked_unhedged_tonnage > 500"
+    finding: "{locked_unhedged_tonnage:.0f} 吨已锁价但未对冲, 单价波动 100 元/吨 影响 {risk_amount:,.0f}"
+    impact: "近 30 天市场最大日波幅 {max_swing:.0f} 元/吨, 极端情况亏 {worst:,.0f}"
+    actions:
+      - {label: 一键对冲, type: action, handler: autoHedge}
+      - {label: 看锁价单, type: navigate, path: /hedge-board}
+    score_impact: 16
+
+  - id: TR_OWNER_CCC_TOO_HIGH
+    category: WEAKNESS
+    severity: MEDIUM
+    title: 现金循环天数偏长
+    when: "ccc_days > benchmark('TRADE','ccc_days').p50"
+    finding: "现金循环 {ccc_days:.0f} 天, 行业中位 {p50:.0f} 天, 多 {gap:.0f} 天"
+    impact: "每多 1 天 ≈ 多占 {capital_per_day:,.0f} 元, 年化利息成本 {interest:,.0f}"
+    actions:
+      - {label: 拆分 CCC, type: navigate, path: "/drilldown?metric=ccc_days"}
+      - {label: AI 提改善方案, type: chat, prompt: "如何缩短 CCC?"}
+    score_impact: 10
+
+  - id: TR_OWNER_BIZ_FEE_BURST
+    category: COMPLIANCE
+    severity: MEDIUM
+    title: 业务费/抹零突增
+    when: "biz_fee_mom_pct > 0.30 OR roundoff_mom_pct > 0.30"
+    finding: "业务费环比 +{biz_fee_mom_pct:.0%} ({biz_fee_amt:,.0f}), 抹零环比 +{roundoff_mom_pct:.0%}"
+    impact: "可能存在销售员变相让利, 影响真实毛利"
+    actions:
+      - {label: 看明细, type: navigate, path: /biz-expense-audit}
+      - {label: 启动专项审计, type: action, handler: launchAuditReview}
+    score_impact: 8
+
+  - id: TR_OWNER_TOP_SUPPLIER_DEP
+    category: RISK
+    severity: MEDIUM
+    title: 上游钢厂依赖度过高
+    when: "top1_supplier_share > 0.45"
+    finding: "Top1 上游供应商 ({top1_supplier_name}) 占采购 {top1_supplier_share:.0%}"
+    impact: "若该供应商断货或调价, 直接影响 {affected_tonnage:.0f} 吨/月业务"
+    actions:
+      - {label: 找备选供应商, type: chat, prompt: "推荐 3 个替代上游"}
+    score_impact: 6
+
+# 每日例行 (登录后自动检查项)
+routines:
+  - "查看昨日销售/毛利"
+  - "查看高风险客户预警"
+  - "查看未对冲锁价单"
+  - "查看 Top 业务员业绩"
+  - "查看 AI 经营建议收件箱"
+
+# AI 教练知识库 (chat-orchestrator 引用)
+education:
+  - topic: 如何缩短现金循环天数
+    source: docs/playbook/finance-ccc-reduction.md
+  - topic: 客户集中度风险管理
+    source: docs/playbook/customer-concentration-risk.md
+  - topic: 期现结合套保最佳实践
+    source: docs/playbook/hedge-best-practices.md

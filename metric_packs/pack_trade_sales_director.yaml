@@ -1,0 +1,73 @@
+pack_id: PK_TRADE_SALES_DIRECTOR
+name: 销售总监包-钢贸
+description: 全公司销售管理视角, 含挂价/达交/客户/业务员业绩
+business_line: TRADE
+role_code: SALES_DIRECTOR
+
+metrics:
+  # 销售
+  - sales_amount
+  - sales_tonnage
+  - avg_unit_price
+  - price_premium_vs_index
+  - gross_profit
+  - gross_margin
+  - ton_gross_profit
+  - order_count
+  - avg_order_tonnage
+  # 客户
+  - new_customer_count
+  - active_customer_count
+  - customer_repeat_rate
+  - customer_concentration_top10
+  - spec_concentration_top10
+  # 发货达交
+  - delivery_tonnage
+  - on_time_delivery_rate
+  - order_to_delivery_days
+  - cancel_rate
+  - return_rate
+  # 应收 (与财务共用)
+  - ar_outstanding
+  - ar_overdue_amount
+  - dso
+  # 挂价 (销售专属)
+  - listed_price
+  - listed_gross_profit
+  - listed_gross_margin
+  - ton_listed_gross_profit
+  - price_realization_rate
+  - listed_vs_actual_gap
+  # 其他销售损益
+  - other_income_amount
+  - processing_fee_income
+  - delivery_fee_income
+  - intermediary_fee_expense
+  - claim_compensation_expense
+  - contribution_margin
+  - ton_net_profit
+
+summary_kpis:
+  - sales_amount
+  - ton_gross_profit
+  - on_time_delivery_rate
+  - customer_concentration_top10
+
+briefing_cards: [SUMMARY, INSIGHT, ADVICE, CAPITAL]
+
+recommended_questions:
+  - 本月销售额对比上月
+  - 各业务员销售排名
+  - Top10 客户销售占比
+  - 上周达交率
+  - 挂价让利最多的客户
+  - 哪些产品吨毛利下降
+  - 华东大区本月业绩
+  - 流失客户清单 (三月未下单)
+  - 新客户增长趋势
+  - 退货率最高的客户
+
+default_subscriptions:
+  - TPL_SALES_DIRECTOR_DAILY
+  - TPL_SALES_DIRECTOR_WEEKLY
+default_dashboard: /pages/dashboard/sales

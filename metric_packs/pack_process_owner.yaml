@@ -1,0 +1,20 @@
+pack_id: PK_PROCESS_OWNER
+name: 加工厂厂长包
+business_line: PROCESS
+role_code: PROCESS_OWNER
+metrics: ALL
+summary_kpis: [processing_tonnage, oee, quality_rate, cost_per_ton]
+briefing_cards: [SUMMARY, INSIGHT, ADVICE, ANOMALY, FORECAST]
+recommended_questions:
+  - 今天产量多少
+  - 1# 产线 OEE
+  - 各车间良品率
+  - 工单逾期清单
+  - 套料率最高的订单
+  - 设备故障 Top
+  - 吨钢成本对比上月
+  - 客诉 Top
+  - 物料缺料预警
+  - 计划达成率
+default_subscriptions: [TPL_PROCESS_OWNER_DAILY]
+default_dashboard: /pages/dashboard/process-owner

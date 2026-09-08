@@ -1,0 +1,35 @@
+pack_id: PK_PROCESS_QUALITY_MGR
+name: 质量经理包-加工
+business_line: PROCESS
+role_code: QUALITY_MGR
+metrics:
+  - ftq
+  - dppm
+  - quality_rate
+  - scrap_rate
+  - rework_rate
+  - customer_complaint_count
+  - customer_complaint_rate
+  - complaint_8d_close_rate
+  - weight_deviation_rate
+  - dimension_deviation_rate
+  - surface_defect_rate
+  - coil_downgrade_rate
+  - defect_top_categories
+  - rework_cost_amount
+  - cost_of_poor_quality
+summary_kpis: [ftq, dppm, customer_complaint_count, coil_downgrade_rate]
+briefing_cards: [SUMMARY, INSIGHT, ANOMALY]
+recommended_questions:
+  - 本周一次合格率
+  - PPM 走势
+  - Top5 缺陷类型
+  - 客诉 8D 关闭率
+  - 表面缺陷率
+  - 重量偏差率
+  - 降级钢卷清单
+  - 质量成本 COPQ
+  - 返工成本
+  - 各工序废品率
+default_subscriptions: [TPL_QUALITY_WEEKLY]
+default_dashboard: /pages/dashboard/quality

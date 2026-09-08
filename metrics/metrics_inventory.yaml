@@ -1,0 +1,248 @@
+## ============================================================
+## 库存域指标（22 基础 + 10 日库存/周转/期初期末/平均 + 10 动因 = 42 个）
+## domain: INVENTORY
+## 注意：库存类多数是 semantics: snapshot, 跨日不能 SUM
+## ============================================================
+domain: INVENTORY
+version: 1
+extends: [_common.yaml, _dimensions.yaml]
+
+metrics:
+
+  # ========== 基础库存（编号 26~47） ==========
+  - { name: inv_tonnage,            label: 库存吨数,         code: M026,
+      fact: dws_inv_daily_snapshot, formula: SUM(on_hand_tonnage),
+      semantics: snapshot, time_agg: last, format: ton }
+
+  - { name: inv_amount,             label: 库存金额,         code: M027,
+      fact: dws_inv_daily_snapshot, formula: SUM(amount),
+      semantics: snapshot, time_agg: last, format: amount, sensitivity: MEDIUM }
+
+  - { name: inv_skus,               label: 在库SKU数,        code: M028,
+      fact: dws_inv_daily_snapshot, formula: COUNT(DISTINCT material_id),
+      semantics: snapshot, time_agg: last, format: count }
+
+  - { name: inv_coils_count,        label: 在库钢卷数,       code: M029,
+      fact: dws_inv_daily_snapshot, formula: SUM(coil_count),
+      semantics: snapshot, time_agg: last, format: count,
+      applicable: [PROCESS, MILL] }
+
+  - { name: avg_aging_days,         label: 平均库龄,         code: M030,
+      fact: dws_inv_daily_snapshot,
+      formula: "SUM(amount*aging_days)/NULLIF(SUM(amount),0)",
+      semantics: snapshot, time_agg: avg, format: days }
+
+  - { name: aging_0_30_amount,      label: 库龄0-30天金额,   code: M031,
+      fact: dws_inv_daily_snapshot, formula: SUM(aging_0_30),
+      semantics: snapshot, time_agg: last, format: amount }
+
+  - { name: aging_31_90_amount,     label: 31-90天金额,      code: M032,
+      fact: dws_inv_daily_snapshot, formula: SUM(aging_31_90),
+      semantics: snapshot, time_agg: last, format: amount }
+
+  - { name: aging_91_180_amount,    label: 91-180天金额,     code: M033,
+      fact: dws_inv_daily_snapshot, formula: SUM(aging_91_180),
+      semantics: snapshot, time_agg: last, format: amount }
+
+  - { name: aging_181_365_amount,   label: 181-365天金额,    code: M034,
+      fact: dws_inv_daily_snapshot, formula: SUM(aging_181_365),
+      semantics: snapshot, time_agg: last, format: amount }
+
+  - { name: aging_365_plus_amount,  label: 一年以上呆滞金额, code: M035,
+      synonyms: [呆滞, 长龄库存],
+      fact: dws_inv_daily_snapshot, formula: SUM(aging_365_plus),
+      semantics: snapshot, time_agg: last, format: amount }
+
+  - { name: slow_moving_amount,     label: 呆滞金额,         code: M036,
+      fact: dws_inv_daily_snapshot,
+      formula: "SUM(CASE WHEN last_move_days>90 THEN amount ELSE 0 END)",
+      semantics: snapshot, time_agg: last, format: amount }
+
+  - { name: inv_mtm_pnl,            label: 库存浮盈亏(盯市), code: M037,
+      synonyms: [按指数估值, 浮亏, 浮盈],
+      fact: dws_inv_daily_snapshot, join: [dim_steel_index],
+      formula: "SUM(on_hand_tonnage*(idx_price - avg_cost_price))",
+      semantics: snapshot, time_agg: last, format: amount,
+      applicable: [TRADE, MILL] }
+
+  - { name: unhedged_tonnage,       label: 未套保头寸,       code: M038,
+      fact: dws_hedge_daily,
+      formula: "SUM(inv_tonnage)-SUM(short_tonnage)",
+      semantics: snapshot, time_agg: last, format: ton,
+      applicable: [TRADE, MILL] }
+
+  - { name: hedge_ratio,            label: 套保率,           code: M039,
+      fact: dws_hedge_daily,
+      formula: "SUM(short_tonnage)/NULLIF(SUM(inv_tonnage),0)",
+      semantics: snapshot, time_agg: last, format: percent,
+      applicable: [TRADE, MILL] }
+
+  - { name: consigned_inv_amount,   label: 寄售库存金额,     code: M040,
+      fact: dws_inv_daily_snapshot, filter: "warehouse_type='寄售'",
+      formula: SUM(amount),
+      semantics: snapshot, time_agg: avg, format: amount,
+      applicable: [TRADE, MILL] }
+
+  - { name: inv_loss_rate,          label: 盘亏率,           code: M041,
+      fact: dws_inv_count_monthly,
+      formula: "SUM(loss_tonnage)/NULLIF(SUM(book_tonnage),0)",
+      semantics: additive, format: percent }
+
+  - { name: spec_oos_count,         label: 缺货SKU数,        code: M042,
+      fact: dws_inv_daily_snapshot,
+      formula: "SUM(CASE WHEN on_hand_tonnage<=0 AND demand_30d>0 THEN 1 ELSE 0 END)",
+      semantics: snapshot, time_agg: last, format: count }
+
+  - { name: inv_yard_utilization,   label: 仓库利用率,       code: M043,
+      fact: dws_warehouse_daily,
+      formula: "SUM(used_area)/NULLIF(SUM(total_area),0)",
+      semantics: snapshot, time_agg: avg, format: percent }
+
+  - { name: safety_stock_breach_count, label: 安全库存触发次数, code: M044,
+      fact: dws_inv_daily_snapshot,
+      formula: "SUM(CASE WHEN on_hand_tonnage<safety_stock THEN 1 ELSE 0 END)",
+      semantics: additive, format: count }
+
+  - { name: avg_pieces_per_pile,    label: 平均堆码件数,     code: M045,
+      fact: dws_warehouse_daily,
+      formula: "SUM(piece_count)/NULLIF(SUM(pile_count),0)",
+      semantics: snapshot, time_agg: avg, format: count,
+      applicable: [TRADE, PROCESS] }
+
+  - { name: cogs_amount,            label: 销售成本,         code: M046,
+      synonyms: [销货成本, COGS],
+      fact: dws_sales_daily, formula: SUM(cost_amount),
+      semantics: additive, format: amount,
+      sensitivity: HIGH }
+
+  - { name: inv_to_sales_ratio,     label: 存销比,           code: M047,
+      synonyms: [库销比, 库存销售比],
+      requires_metrics: [period_end_inv_tonnage, sales_tonnage],
+      formula: "period_end_inv_tonnage / NULLIF(sales_tonnage / days_in_period * 30, 0)",
+      format: ratio, unit: 个月,
+      note: "期末库存吨数 ÷ 月均销售吨数, 衡量手上库存够卖几个月",
+      applicable: [TRADE, MILL] }
+
+  # ========== 日库存 / 期初期末 / 平均 / 周转率（编号 123~132） ==========
+  - { name: daily_inv_tonnage,      label: 日库存吨数,       code: M123,
+      synonyms: [每天库存, 日终库存, 在库吨数],
+      fact: dws_inv_daily_snapshot, formula: SUM(on_hand_tonnage),
+      semantics: snapshot, time_agg: avg,
+      grain: [snap_date, warehouse_id, material_id, origin_id, grade_code],
+      format: ton }
+
+  - { name: daily_inv_amount,       label: 日库存金额,       code: M124,
+      synonyms: [每天库存金额, 日终库存额],
+      fact: dws_inv_daily_snapshot, formula: SUM(amount),
+      semantics: snapshot, time_agg: avg, format: amount }
+
+  - { name: period_begin_inv_tonnage, label: 期初库存吨数,    code: M125,
+      fact: dws_inv_daily_snapshot, formula: SUM(on_hand_tonnage),
+      semantics: snapshot, time_agg: first, format: ton }
+
+  - { name: period_end_inv_tonnage, label: 期末库存吨数,     code: M126,
+      fact: dws_inv_daily_snapshot, formula: SUM(on_hand_tonnage),
+      semantics: snapshot, time_agg: last, format: ton }
+
+  - { name: period_begin_inv_amount, label: 期初库存金额,    code: M127,
+      fact: dws_inv_daily_snapshot, formula: SUM(amount),
+      semantics: snapshot, time_agg: first, format: amount }
+
+  - { name: period_end_inv_amount,  label: 期末库存金额,     code: M128,
+      fact: dws_inv_daily_snapshot, formula: SUM(amount),
+      semantics: snapshot, time_agg: last, format: amount }
+
+  - { name: avg_inv_tonnage,        label: 平均库存吨数,     code: M129,
+      synonyms: [日均库存, 期间平均库存, 平均库存量],
+      fact: dws_inv_daily_snapshot,
+      formula: "AVG_OF_DAILY(SUM(on_hand_tonnage))",
+      compute: "先按 snap_date 聚合, 再跨日 AVG",
+      semantics: snapshot, time_agg: avg, format: ton }
+
+  - { name: avg_inv_amount,         label: 平均库存金额,     code: M130,
+      synonyms: [日均库存金额, 平均库存额],
+      fact: dws_inv_daily_snapshot,
+      formula: "AVG_OF_DAILY(SUM(amount))",
+      semantics: snapshot, time_agg: avg, format: amount }
+
+  - { name: inv_turnover_ratio_by_tonnage,
+      label: 存货周转率(按吨), code: M131,
+      synonyms: [周转次数, 周转率, 库存周转吨],
+      requires_metrics: [sales_tonnage, avg_inv_tonnage],
+      formula: "sales_tonnage / NULLIF(avg_inv_tonnage, 0)",
+      format: count, unit: 次,
+      note: "钢贸常用口径: 期内销售吨数 ÷ 期内日均库存吨数",
+      applicable: [TRADE, PROCESS, MILL] }
+
+  - { name: inv_turnover_ratio_by_amount,
+      label: 存货周转率(按金额), code: M132,
+      synonyms: [财务存货周转率, 周转率金额口径],
+      requires_metrics: [cogs_amount, avg_inv_amount],
+      formula: "cogs_amount / NULLIF(avg_inv_amount, 0)",
+      format: count, unit: 次,
+      note: "财务标准: 销售成本 ÷ 平均库存金额" }
+
+  - { name: inv_turnover_days,      label: 库存周转天数,     code: M048,
+      synonyms: [周转天数, 库存天数],
+      requires_metrics: [inv_turnover_ratio_by_tonnage],
+      formula: "days_in_period / NULLIF(inv_turnover_ratio_by_tonnage, 0)",
+      format: days }
+
+  - { name: inv_turnover_days_by_amount, label: 库存周转天数(金额), code: M048A,
+      requires_metrics: [inv_turnover_ratio_by_amount],
+      formula: "days_in_period / NULLIF(inv_turnover_ratio_by_amount, 0)",
+      format: days }
+
+  - { name: inv_turnover_times,     label: 库存周转次数,     code: M049,
+      requires_metrics: [inv_turnover_days],
+      formula: "days_in_period / NULLIF(inv_turnover_days, 0)",
+      format: count, unit: 次 }
+
+  # ========== 库存动因（编号 157~166） ==========
+  - { name: inflow_tonnage,         label: 入库吨数,         code: M157,
+      synonyms: [到货量, 进货量],
+      fact: dws_inv_movement_daily, filter: "direction='IN'",
+      formula: SUM(tonnage), format: ton }
+
+  - { name: outflow_tonnage,        label: 出库吨数,         code: M158,
+      synonyms: [出货量, 提货量],
+      fact: dws_inv_movement_daily, filter: "direction='OUT'",
+      formula: SUM(tonnage), format: ton }
+
+  - { name: net_change_tonnage,     label: 库存净变动,       code: M159,
+      requires_metrics: [inflow_tonnage, outflow_tonnage],
+      formula: "inflow_tonnage - outflow_tonnage",
+      format: ton }
+
+  - { name: purchase_in_tonnage,    label: 采购入库吨数,     code: M160,
+      fact: dws_inv_movement_daily, filter: "txn_category='PURCHASE_IN'",
+      formula: SUM(tonnage), format: ton }
+
+  - { name: production_in_tonnage,  label: 生产入库吨数,     code: M161,
+      fact: dws_inv_movement_daily, filter: "txn_category='PRODUCTION_IN'",
+      formula: SUM(tonnage), format: ton,
+      applicable: [PROCESS, MILL] }
+
+  - { name: sales_out_tonnage,      label: 销售出库吨数,     code: M162,
+      fact: dws_inv_movement_daily, filter: "txn_category='SALES_OUT'",
+      formula: SUM(tonnage), format: ton }
+
+  - { name: transfer_tonnage,       label: 移库吨数,         code: M163,
+      fact: dws_inv_movement_daily,
+      filter: "txn_category IN ('TRANSFER_IN','TRANSFER_OUT') AND direction='OUT'",
+      formula: SUM(tonnage), format: ton }
+
+  - { name: allocation_tonnage,     label: 调拨吨数,         code: M164,
+      fact: dws_inv_movement_daily,
+      filter: "txn_category IN ('ALLOC_IN','ALLOC_OUT') AND direction='OUT'",
+      formula: SUM(tonnage), format: ton }
+
+  - { name: inventory_loss_tonnage, label: 盘亏吨数,         code: M165,
+      fact: dws_inv_movement_daily, filter: "txn_category='INVENTORY_LOSS'",
+      formula: SUM(tonnage), format: ton }
+
+  - { name: inflow_outflow_ratio,   label: 进销比,           code: M166,
+      synonyms: [进出比],
+      requires_metrics: [inflow_tonnage, outflow_tonnage],
+      formula: "inflow_tonnage / NULLIF(outflow_tonnage, 0)",
+      format: ratio }

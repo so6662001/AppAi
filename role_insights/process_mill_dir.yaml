@@ -1,0 +1,84 @@
+## ============================================================
+## 加工厂厂长 (PROCESS_MILL_DIR) 岗位画像
+## ============================================================
+role_code: PROCESS_MILL_DIR
+role_name: 加工厂厂长
+business_line: PROCESS
+level: MANAGER
+focus_areas: [oee, quality, energy, cost, delivery]
+
+primary_kpis:
+  - {code: oee,                       weight: 0.30, direction: HIGHER, label: OEE 设备综合效率, benchmark: true}
+  - {code: first_pass_yield,          weight: 0.25, direction: HIGHER, label: 一次合格率, benchmark: true}
+  - {code: energy_per_ton,            weight: 0.15, direction: LOWER,  label: 吨钢能耗, benchmark: true}
+  - {code: processing_cost_per_ton,   weight: 0.15, direction: LOWER,  label: 吨加工成本}
+  - {code: order_otd,                 weight: 0.10, direction: HIGHER, label: 订单按时交付率}
+  - {code: safety_incident_count,     weight: 0.05, direction: LOWER,  label: 安全事故}
+
+rules:
+  - id: PM_OEE_LOW
+    category: WEAKNESS
+    severity: HIGH
+    title: OEE 低于行业中位
+    when: "oee < benchmark('PROCESS','oee').p50"
+    finding: "OEE {oee:.0%}, 行业 {p50:.0%}, 主要拖累 = {worst_factor} ({worst_value:.0%})"
+    impact: "若提升到 P50, 月加工量可多 {extra_tons:,.0f} 吨, 营收 ¥{extra_revenue:,.0f}"
+    actions:
+      - {label: 看 OEE 分解, type: navigate, path: "/drilldown?metric=oee&dim=workcenter"}
+      - {label: AI 改善建议, type: chat, prompt: "OEE 怎么提升, 重点改哪里?"}
+    score_impact: 18
+
+  - id: PM_YIELD_LOW
+    category: WEAKNESS
+    severity: HIGH
+    title: 一次合格率偏低
+    when: "first_pass_yield < benchmark('PROCESS','first_pass_yield').p50"
+    finding: "一次合格率 {first_pass_yield:.1%}, 行业中位 {p50:.1%}"
+    impact: "返工成本 ¥{rework_cost:,.0f}/月, 客户投诉 {complaint_count} 起"
+    actions:
+      - {label: 看不合格原因, type: navigate, path: "/drilldown?metric=defect_count&dim=defect_type"}
+    score_impact: 16
+
+  - id: PM_ENERGY_HIGH
+    category: WEAKNESS
+    severity: MEDIUM
+    title: 吨钢能耗偏高
+    when: "energy_per_ton > benchmark('PROCESS','energy_per_ton').p50"
+    finding: "吨钢能耗 {energy_per_ton:.0f} kgce/t, 行业 {p50:.0f}, 高 {gap_pct:.0%}"
+    impact: "月超额能源支出 ¥{extra_cost:,.0f}"
+    actions:
+      - {label: 按工序拆能耗, type: navigate, path: "/drilldown?metric=energy_per_ton&dim=process"}
+    score_impact: 10
+
+  - id: PM_OTD_LOW
+    category: WEAKNESS
+    severity: MEDIUM
+    title: 订单按时交付率下滑
+    when: "order_otd_mom_pct < -0.05"
+    finding: "OTD {order_otd:.0%}, 环比 {order_otd_mom_pct:+.1%}, 延迟订单 {late_orders}"
+    impact: "客户口碑下降, 后续订单流失风险"
+    actions:
+      - {label: 看延迟订单, type: navigate, path: "/order/list?filter=late"}
+    score_impact: 8
+
+  - id: PM_SAFETY
+    category: COMPLIANCE
+    severity: HIGH
+    title: 安全事故
+    when: "safety_incident_count > 0"
+    finding: "本月发生 {safety_incident_count} 起安全事故"
+    impact: "停工/罚款风险, 需立即整改"
+    actions:
+      - {label: 启动专项整改, type: action, handler: launchSafetyReview}
+    score_impact: 20
+
+routines:
+  - "查看 OEE 日报"
+  - "查看不合格品记录"
+  - "查看能耗"
+  - "查看延迟订单"
+
+education:
+  - topic: 怎么提 OEE
+  - topic: 怎么压能耗
+  - topic: SPC 一次合格率改善

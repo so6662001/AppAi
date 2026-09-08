@@ -1,0 +1,292 @@
+openapi: 3.0.3
+info:
+  title: 定时报表 API
+  description: 用户把 DSL 查询/AI 对话保存为定时任务, 自动执行并推送结果
+  version: 1.0.0
+servers:
+  - url: https://api.steel-erp.com/v1
+security:
+  - bearerAuth: []
+
+paths:
+
+  # ====================== 定时报表 ======================
+  /scheduled-reports:
+    get:
+      summary: 我的定时报表列表
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [ACTIVE, PAUSED, EXPIRED] } }
+        - { name: page,   in: query, schema: { type: integer, default: 1 } }
+        - { name: size,   in: query, schema: { type: integer, default: 30 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total: { type: integer }
+                  items: { type: array, items: { $ref: '#/components/schemas/ScheduledReport' } }
+    post:
+      summary: 新建定时报表 (常见入口: 聊天页"另存为定时")
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ScheduledReportInput' } } }
+      responses:
+        '201':
+          description: Created
+          content: { application/json: { schema: { $ref: '#/components/schemas/ScheduledReport' } } }
+
+  /scheduled-reports/{id}:
+    get:
+      summary: 详情
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/ScheduledReport' } } }
+    patch:
+      summary: 编辑 (cron / 推送渠道 / 接收人...)
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        content: { application/json: { schema: { $ref: '#/components/schemas/ScheduledReportInput' } } }
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/ScheduledReport' } } }
+    delete:
+      summary: 删除 (软删, status=DELETED)
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses: { '204': { description: OK } }
+
+  /scheduled-reports/{id}/pause:
+    post:
+      summary: 暂停
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses: { '200': { description: OK } }
+
+  /scheduled-reports/{id}/resume:
+    post:
+      summary: 恢复
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses: { '200': { description: OK } }
+
+  /scheduled-reports/{id}/run-now:
+    post:
+      summary: 立刻执行一次 (调试用)
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '202':
+          description: Accepted, returns run_id
+          content:
+            application/json:
+              schema: { type: object, properties: { run_id: { type: integer } } }
+
+  /scheduled-reports/{id}/runs:
+    get:
+      summary: 执行历史
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+        - { name: status, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 30 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/ReportRun' } }
+
+  /scheduled-reports/runs/{run_id}:
+    get:
+      summary: 单次执行详情 (含渲染好的 blocks)
+      parameters: [{ name: run_id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/ReportRunDetail' } } }
+
+  /scheduled-reports/runs/{run_id}/resend:
+    post:
+      summary: 重新推送(原结果, 不再执行 SQL)
+      parameters:
+        - { name: run_id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                channels: { type: array, items: { type: string } }
+                recipients: { type: array, items: { type: string } }
+      responses: { '200': { description: OK } }
+
+  # ====================== 报表模板 ======================
+  /scheduled-reports/templates:
+    get:
+      summary: 报表模板列表
+      parameters:
+        - { name: business_line, in: query, schema: { type: string, enum: [TRADE, PROCESS, MILL] } }
+        - { name: role,          in: query, schema: { type: string } }
+        - { name: category,      in: query, schema: { type: string, enum: [DAILY, WEEKLY, MONTHLY] } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/ReportTemplate' } }
+
+  /scheduled-reports/templates/{tpl_id}/subscribe:
+    post:
+      summary: 一键订阅模板 (自动建一个 scheduled_report)
+      parameters: [{ name: tpl_id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '201':
+          description: Created
+          content: { application/json: { schema: { $ref: '#/components/schemas/ScheduledReport' } } }
+
+  # ====================== 共享订阅 ======================
+  /scheduled-reports/{id}/subscribers:
+    get:
+      summary: 订阅者列表
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/ReportSubscription' } }
+    post:
+      summary: 添加订阅者
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id]
+              properties:
+                user_id:  { type: integer }
+                channels: { type: array, items: { type: string } }
+      responses: { '201': { description: Created } }
+
+  /scheduled-reports/{id}/subscribers/{sub_id}:
+    delete:
+      summary: 取消订阅
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+        - { name: sub_id, in: path, required: true, schema: { type: integer } }
+      responses: { '204': { description: OK } }
+
+
+components:
+
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+
+  schemas:
+
+    ScheduledReport:
+      type: object
+      properties:
+        report_id:       { type: integer }
+        tenant_id:       { type: integer }
+        user_id:         { type: integer }
+        name:            { type: string, example: '老板日报-销售&库存' }
+        description:     { type: string }
+        dsl_json:        { type: object }
+        question:        { type: string }
+        render_blocks:   { type: array, items: { type: string, enum: [kpi, table, chart, summary] } }
+        chart_spec:      { type: object }
+        schedule_type:   { type: string, enum: [cron, interval, daily, weekly, monthly, once] }
+        cron_expr:       { type: string, example: '0 0 8 * * ?' }
+        timezone:        { type: string, example: 'Asia/Shanghai' }
+        next_run_at:     { type: string, format: date-time }
+        last_run_at:     { type: string, format: date-time }
+        fail_count:      { type: integer }
+        status:          { type: string, enum: [ACTIVE, PAUSED, EXPIRED, DELETED] }
+        recipients:      { type: array, items: { type: string }, example: ["user:1","role:sales_manager"] }
+        channels:        { type: array, items: { type: string, enum: [INAPP, WECOM, DINGTALK, EMAIL, UNI_PUSH, SMS] } }
+        push_silent_if_empty: { type: boolean }
+        push_format:     { type: string, enum: [card, table, image, excel] }
+        effective_from:  { type: string, format: date }
+        effective_to:    { type: string, format: date }
+        max_run_count:   { type: integer }
+        estimated_biz_tokens: { type: integer }
+        created_at:      { type: string, format: date-time }
+        updated_at:      { type: string, format: date-time }
+        source:          { type: string, enum: [chat, manual, template] }
+
+    ScheduledReportInput:
+      type: object
+      required: [name, dsl_json, schedule_type, channels]
+      properties:
+        name:            { type: string }
+        description:     { type: string }
+        dsl_json:        { type: object }
+        question:        { type: string }
+        render_blocks:   { type: array, items: { type: string } }
+        chart_spec:      { type: object }
+        schedule_type:   { type: string }
+        cron_expr:       { type: string }
+        timezone:        { type: string }
+        recipients:      { type: array, items: { type: string } }
+        channels:        { type: array, items: { type: string } }
+        push_silent_if_empty: { type: boolean }
+        push_format:     { type: string }
+        effective_from:  { type: string, format: date }
+        effective_to:    { type: string, format: date }
+        max_run_count:   { type: integer }
+        source:          { type: string }
+
+    ReportRun:
+      type: object
+      properties:
+        run_id:          { type: integer }
+        report_id:       { type: integer }
+        scheduled_at:    { type: string, format: date-time }
+        started_at:      { type: string, format: date-time }
+        finished_at:     { type: string, format: date-time }
+        duration_ms:     { type: integer }
+        status:          { type: string, enum: [PENDING, RUNNING, SUCCESS, FAILED, EMPTY, CANCELED] }
+        error_code:      { type: string }
+        error_msg:       { type: string }
+        rows_returned:   { type: integer }
+        biz_tokens_charged: { type: integer }
+        cost_cny:        { type: number }
+        push_results:    { type: array, items: { type: object } }
+
+    ReportRunDetail:
+      allOf:
+        - $ref: '#/components/schemas/ReportRun'
+        - type: object
+          properties:
+            sql_text:       { type: string }
+            blocks_json:    { type: array, items: { type: object } }
+            result_summary: { type: string }
+            result_artifact_url: { type: string }
+
+    ReportTemplate:
+      type: object
+      properties:
+        template_id:    { type: integer }
+        business_line:  { type: string }
+        role:           { type: string }
+        category:       { type: string }
+        name:           { type: string }
+        description:    { type: string }
+        dsl_json:       { type: object }
+        cron_expr:      { type: string }
+        channels:       { type: array, items: { type: string } }
+        popularity:     { type: integer }
+
+    ReportSubscription:
+      type: object
+      properties:
+        sub_id:               { type: integer }
+        report_id:            { type: integer }
+        subscriber_user_id:   { type: integer }
+        channels:             { type: array, items: { type: string } }
+        status:               { type: string }
+        created_at:           { type: string, format: date-time }

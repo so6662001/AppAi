@@ -1,0 +1,26 @@
+server:
+  port: ${PORT:8082}
+  servlet: { context-path: /api/v1 }
+spring:
+  application: { name: payment-service }
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/steel_billing?useSSL=false&serverTimezone=Asia/Shanghai}
+    username: ${DB_USER:root}
+    password: ${DB_PASS:steeldev}
+
+billing:
+  base-url: ${BILLING_URL:http://localhost:8081/api/v1}
+
+# 支付凭证 - 生产由 K8s Secret / Vault 注入
+payment:
+  wechat:
+    app-id: ${WECHAT_APP_ID:}
+    mch-id: ${WECHAT_MCH_ID:}
+    api-key: ${WECHAT_API_KEY:}
+    private-key-path: ${WECHAT_PRIVATE_KEY_PATH:}
+    cert-serial: ${WECHAT_CERT_SERIAL:}
+    notify-url: ${WECHAT_NOTIFY_URL:https://api.steel-erp.com/api/v1/payment/notify/wechat}
+  alipay:
+    app-id: ${ALIPAY_APP_ID:}
+    private-key: ${ALIPAY_PRIVATE_KEY:}
+    notify-url: ${ALIPAY_NOTIFY_URL:https://api.steel-erp.com/api/v1/payment/notify/alipay}

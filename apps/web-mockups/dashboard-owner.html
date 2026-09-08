@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>老板看板 · 钢铁 AI 经营分析平台</title>
+<link rel="stylesheet" href="./assets/shared.css">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+</head>
+<body>
+<div class="app">
+
+  <div id="app-shell" data-active="dashboard-owner.html" data-crumbs="经营驾驶舱 <span class=&quot;sep&quot;>/</span> <span class=&quot;cur&quot;>老板看板</span>"></div>
+
+  <main class="main">
+
+    <div class="page-title">
+      <div>
+        <h1>老板看板</h1>
+        <div class="desc">截至 2026-05-27 18:00 · 数据延迟 < 5min · 单位: 万元 / 吨</div>
+      </div>
+      <div class="flex gap-12">
+        <div class="btn-grp">
+          <button class="btn">日</button>
+          <button class="btn primary">周</button>
+          <button class="btn">月</button>
+          <button class="btn">季</button>
+          <button class="btn">年</button>
+        </div>
+        <select style="width:140px">
+          <option>合并报表 (全部)</option>
+          <option>上海钢贸有限公司</option>
+          <option>张家港加工厂</option>
+        </select>
+        <button class="btn primary">📤 分享给 AI</button>
+      </div>
+    </div>
+
+    <!-- KPI 4 张 -->
+    <div class="row-4 mb-16">
+      <div class="card"><div class="card-b">
+        <div class="kpi">
+          <div class="lbl">本周销售额</div>
+          <div class="val">1.28<span class="unit">亿元</span></div>
+          <div class="sub trend up">▲ 12.4% vs 上周</div>
+        </div>
+        <div class="chart-sm" id="kpi1" style="height:60px;margin-top:10px"></div>
+      </div></div>
+      <div class="card"><div class="card-b">
+        <div class="kpi">
+          <div class="lbl">本周吨毛利 (加权)</div>
+          <div class="val">186<span class="unit">元/吨</span></div>
+          <div class="sub trend up">▲ 22 元 vs 上周</div>
+        </div>
+        <div class="chart-sm" id="kpi2" style="height:60px;margin-top:10px"></div>
+      </div></div>
+      <div class="card"><div class="card-b">
+        <div class="kpi">
+          <div class="lbl">实时库存金额</div>
+          <div class="val">1.85<span class="unit">亿元</span></div>
+          <div class="sub trend down">▲ 1.4% · 涨 260万</div>
+        </div>
+        <div class="chart-sm" id="kpi3" style="height:60px;margin-top:10px"></div>
+      </div></div>
+      <div class="card" style="border-color: #ffd591"><div class="card-b">
+        <div class="kpi">
+          <div class="lbl">客户授信使用率 > 80%</div>
+          <div class="val" style="color:var(--warning)">7<span class="unit">家客户</span></div>
+          <div class="sub muted">其中 2 家 > 95%, 请关注</div>
+        </div>
+        <div class="chart-sm" id="kpi4" style="height:60px;margin-top:10px"></div>
+      </div></div>
+    </div>
+
+    <!-- 主图区 -->
+    <div class="row mb-16" style="grid-template-columns: 2fr 1fr; display: grid;">
+      <div class="card">
+        <div class="card-h">
+          <h3>近 30 天 · 销售额 vs 吨毛利</h3>
+          <div class="tools">
+            <span class="tag muted">销售额(万元)</span>
+            <span class="tag info">吨毛利(元/吨)</span>
+            <span class="muted">|</span>
+            <span>📥 导出</span>
+          </div>
+        </div>
+        <div class="card-b"><div id="ch_sales" class="chart chart-lg"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>产品结构 · 本周销售吨数</h3></div>
+        <div class="card-b"><div id="ch_pie" class="chart chart-lg"></div></div>
+      </div>
+    </div>
+
+    <!-- 风险 + 资金占用 Top -->
+    <div class="row-2 mb-16">
+      <div class="card">
+        <div class="card-h">
+          <h3>🚨 风险预警 (按严重度)</h3>
+          <div class="tools"><span class="tag danger">高 2</span><span class="tag warning">中 3</span></div>
+        </div>
+        <div class="card-b" style="display:grid;gap:10px">
+          <div class="row-sev HIGH">
+            <div class="bold"><span class="sev HIGH"></span>客户 [宝某科技] 授信使用率 98.6%</div>
+            <div style="margin-left:auto"><a>查看 →</a></div>
+          </div>
+          <div class="row-sev HIGH">
+            <div class="bold"><span class="sev HIGH"></span>HC2606 锁价订单已锁未对冲 580 吨</div>
+            <div style="margin-left:auto"><a>立即对冲 →</a></div>
+          </div>
+          <div class="row-sev MEDIUM">
+            <div class="bold"><span class="sev MEDIUM"></span>沙钢系 Q355B 库存 1820 吨 (高于均值 23%)</div>
+            <div style="margin-left:auto"><a>建议出货 →</a></div>
+          </div>
+          <div class="row-sev MEDIUM">
+            <div class="bold"><span class="sev MEDIUM"></span>基差倒挂 -68 元/吨, 持续 4 天</div>
+            <div style="margin-left:auto"><a>详情 →</a></div>
+          </div>
+          <div class="row-sev MEDIUM">
+            <div class="bold"><span class="sev MEDIUM"></span>客户 [江某物流] 账龄 180+ 应收 142 万</div>
+            <div style="margin-left:auto"><a>催收 →</a></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h">
+          <h3>💸 客户资金占用 Top 5</h3>
+          <div class="tools"><a>全部客户 →</a></div>
+        </div>
+        <div class="card-b no-pad">
+          <table class="tb">
+            <thead><tr><th>客户</th><th class="num">占资金</th><th class="num">客户 IRR</th><th>评级</th></tr></thead>
+            <tbody>
+              <tr><td>客户 A · 浙江某重工</td><td class="num">¥2,180万</td><td class="num up">18.2%</td><td><span class="tag success">👍 优质</span></td></tr>
+              <tr><td>客户 B · 苏州某制品</td><td class="num">¥1,650万</td><td class="num">6.4%</td><td><span class="tag warning">⚠️ 一般</span></td></tr>
+              <tr><td>客户 C · 上海某机械</td><td class="num">¥1,420万</td><td class="num">9.1%</td><td><span class="tag muted">中等</span></td></tr>
+              <tr><td>客户 D · 张家港某物流</td><td class="num">¥1,280万</td><td class="num">3.2%</td><td><span class="tag danger">❗ 低效</span></td></tr>
+              <tr><td>客户 E · 常州某加工</td><td class="num">¥980万</td><td class="num down">-1.4%</td><td><span class="tag danger">🚨 亏损</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 业务员排行 + 库存动因 -->
+    <div class="row-2">
+      <div class="card">
+        <div class="card-h">
+          <h3>🏆 业务员 Top 5 · 本月净贡献</h3>
+          <div class="tools"><a>全部业务员 →</a></div>
+        </div>
+        <div class="card-b"><div id="ch_rep" class="chart"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-h">
+          <h3>📦 库存动因 · 近 7 天</h3>
+          <div class="tools"><span class="muted">入库 vs 出库 vs 调拨 vs 损耗</span></div>
+        </div>
+        <div class="card-b"><div id="ch_inv" class="chart"></div></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="./assets/layout.js"></script>
+<script>
+  // 共用钢铁配色
+  const PRIMARY = '#1677ff', SUCCESS = '#52c41a', WARNING = '#fa8c16', DANGER = '#f5222d', GOLD='#d48806';
+
+  // 4 个 KPI 迷你 sparkline
+  function sparkline(id, data, color) {
+    const c = echarts.init(document.getElementById(id));
+    c.setOption({
+      grid: { left:0, right:0, top:4, bottom:0 },
+      xAxis: { show: false, type: 'category', data: data.map((_,i) => i) },
+      yAxis: { show: false, scale: true },
+      series: [{ type: 'line', data, smooth: true, symbol: 'none',
+        lineStyle: { color, width: 1.6 },
+        areaStyle: { color: { type:'linear', x:0,y:0,x2:0,y2:1, colorStops:[
+          { offset:0, color: color+'55' }, { offset:1, color: color+'00' }] } } }],
+    });
+  }
+  sparkline('kpi1', [80,92,87,110,108,124,128], PRIMARY);
+  sparkline('kpi2', [150,148,152,160,164,178,186], SUCCESS);
+  sparkline('kpi3', [180,182,181,183,184,184,185], WARNING);
+  sparkline('kpi4', [5,5,6,6,7,7,7], DANGER);
+
+  // 销售额 vs 吨毛利双轴
+  echarts.init(document.getElementById('ch_sales')).setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { data: ['销售额', '吨毛利'], top: 8 },
+    grid: { left: 50, right: 60, top: 40, bottom: 30 },
+    xAxis: { type: 'category', data: Array.from({length:30}, (_,i) => `5/${i+1}`), boundaryGap: false },
+    yAxis: [
+      { type:'value', name:'销售额(万元)', axisLabel:{formatter:'{value}万'} },
+      { type:'value', name:'吨毛利(元/吨)' },
+    ],
+    series: [
+      { name:'销售额', type:'bar', data: [820,910,780,1100,950,1280,1180,1050,990,1020,1080,1150,1240,1180,1210,1310,1280,1240,1330,1180,1260,1380,1420,1280,1340,1380,1450,1280,1240,1380].map(v=>v/10), itemStyle:{color:PRIMARY+'cc'}, barWidth:14 },
+      { name:'吨毛利', type:'line', yAxisIndex:1, data:[150,148,144,152,156,160,162,158,156,164,168,172,170,168,170,174,178,182,180,178,176,180,184,182,184,186,188,184,186,186], smooth:true, lineStyle:{color:SUCCESS, width:2.5}, symbol:'circle', symbolSize:5, itemStyle:{color:SUCCESS} },
+    ],
+  });
+
+  // 产品结构饼图
+  echarts.init(document.getElementById('ch_pie')).setOption({
+    tooltip: { trigger:'item' },
+    legend: { bottom: 4, type: 'scroll' },
+    series: [{
+      type: 'pie', radius: ['38%', '70%'],
+      data: [
+        { value: 4820, name: '热卷板 (HC)' },
+        { value: 3210, name: '螺纹钢 (RB)' },
+        { value: 2180, name: '冷轧板 (CR)' },
+        { value: 1620, name: '镀锌板 (GI)' },
+        { value: 980,  name: '不锈钢 (SS)' },
+        { value: 520,  name: '其他' },
+      ],
+      label: { formatter: '{b}\n{d}%', fontSize: 11 },
+      itemStyle: { borderColor: '#fff', borderWidth: 2 },
+    }],
+  });
+
+  // 业务员排行
+  echarts.init(document.getElementById('ch_rep')).setOption({
+    tooltip: { trigger:'axis', axisPointer: { type:'shadow' } },
+    legend: { data: ['毛利贡献', '资金成本', '净贡献'], top: 4 },
+    grid: { left: 80, right: 30, top: 40, bottom: 30 },
+    xAxis: { type: 'value', axisLabel: { formatter:'{value}万' } },
+    yAxis: { type: 'category', data: ['林某', '王某', '陈某', '李某', '赵某'] },
+    series: [
+      { name:'毛利贡献', type:'bar', stack:'a', data:[42, 38, 35, 30, 28], itemStyle:{color:SUCCESS} },
+      { name:'资金成本', type:'bar', stack:'a', data:[-5, -7, -8, -6, -4], itemStyle:{color:WARNING} },
+      { name:'净贡献',   type:'bar', stack:'a', data:[-3, -4, -3, -3, -3], itemStyle:{color:DANGER} },
+    ],
+  });
+
+  // 库存动因
+  echarts.init(document.getElementById('ch_inv')).setOption({
+    tooltip: { trigger:'axis' },
+    legend: { top: 4 },
+    grid: { left: 50, right: 30, top: 40, bottom: 30 },
+    xAxis: { type: 'category', data: ['5/21','5/22','5/23','5/24','5/25','5/26','5/27'] },
+    yAxis: { type: 'value', axisLabel: { formatter: '{value} 吨' } },
+    series: [
+      { name:'入库', type:'bar', stack:'a', data:[820, 760, 940, 1020, 880, 740, 920], itemStyle:{color:PRIMARY} },
+      { name:'出库', type:'bar', stack:'a', data:[-720, -880, -820, -940, -860, -900, -1020], itemStyle:{color:SUCCESS} },
+      { name:'调拨', type:'bar', stack:'a', data:[120, 80, 60, 90, 110, 70, 60], itemStyle:{color:GOLD} },
+      { name:'损耗', type:'bar', stack:'a', data:[-12, -8, -10, -14, -16, -11, -13], itemStyle:{color:DANGER} },
+      { name:'净增',  type:'line', data:[208, -48, 170, 156, 114, -101, -53], lineStyle:{color:'#222', width:2}, itemStyle:{color:'#222'} },
+    ],
+  });
+</script>
+</body>
+</html>

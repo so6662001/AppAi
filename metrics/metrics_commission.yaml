@@ -1,0 +1,81 @@
+## ============================================================
+## 提成 + 员工净贡献 指标
+## ============================================================
+version: 1
+domain: commission
+
+metrics:
+  - name: commission_total
+    label: 提成总额
+    code: C001
+    formula: SUM(commission_final)
+    table: commission_calc_result
+    grain: [month, quarter, year]
+    unit: 元
+    applicable: [TRADE, PROCESS, MILL, SHELL]
+    synonyms: [总提成, 提成合计]
+
+  - name: commission_per_rep
+    label: 人均提成
+    code: C002
+    formula: SUM(commission_final) / NULLIF(COUNT(DISTINCT rep_id),0)
+    table: commission_calc_result
+    grain: [month]
+    unit: 元/人
+    applicable: [TRADE, PROCESS, MILL, SHELL]
+
+  - name: commission_to_gp_ratio
+    label: 提成占毛利比
+    code: C003
+    formula: SUM(commission_final) / NULLIF(SUM(gross_profit_listed),0)
+    table: commission_calc_result
+    unit: 比例
+    applicable: [TRADE, PROCESS, MILL, SHELL]
+    warn_threshold: 0.40
+    description: 提成总额占挂牌毛利比, 超过 40% 触发预警
+
+  - name: commission_ar_deduct
+    label: 应收占款扣息
+    code: C004
+    formula: SUM(ar_interest_amt)
+    table: commission_calc_result
+    unit: 元
+
+  - name: commission_inv_deduct
+    label: 库存占款扣息
+    code: C005
+    formula: SUM(inv_interest_amt)
+    table: commission_calc_result
+    unit: 元
+
+  - name: commission_prepay_deduct
+    label: 预付款占款扣息
+    code: C006
+    formula: SUM(prepay_interest_amt)
+    table: commission_calc_result
+    unit: 元
+
+  - name: rep_net_contribution
+    label: 员工净贡献
+    code: C010
+    description: 毛利 - 各项资金成本 - 工资 - 业务费 = 该员工带给公司的净值
+    formula: SUM(net_contribution)
+    table: dws_employee_contrib_monthly
+    grain: [month, quarter, year]
+    unit: 元
+    applicable: [TRADE, PROCESS, MILL, SHELL]
+    synonyms: [员工真实贡献, 销售员净利润]
+
+  - name: rep_capital_cost
+    label: 员工资金占用成本
+    code: C011
+    formula: SUM(ar_interest_cost + inv_interest_cost + prepay_interest_cost)
+    table: dws_employee_contrib_monthly
+    unit: 元
+
+action_rules:
+  - id: COMMISSION_TO_GP_HIGH
+    title: 提成占毛利过高
+    severity: MEDIUM
+    when: commission_to_gp_ratio > 0.4
+    advice: "本月提成占毛利 {commission_to_gp_ratio:.0%}, 大于警戒线 40%, 检查规则是否被打穿"

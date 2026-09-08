@@ -1,0 +1,118 @@
+## ============================================================
+## 风险类指标（10 个） + 风险告警规则
+## domain: RISK
+## ============================================================
+domain: RISK
+version: 1
+extends: [_common.yaml, _dimensions.yaml]
+
+metrics:
+
+  - { name: credit_utilization_rate, label: 客户授信使用率, code: M141,
+      fact: dws_exposure_daily, filter: "exposure_type='CUSTOMER'",
+      formula: "SUM(exposure_amount)/NULLIF(SUM(limit_amount),0)",
+      semantics: snapshot, time_agg: last, format: percent,
+      sensitivity: HIGH }
+
+  - { name: credit_overlimit_amount, label: 授信超限金额, code: M142,
+      fact: dws_exposure_daily,
+      filter: "exposure_type='CUSTOMER' AND breach=1",
+      formula: "SUM(exposure_amount - limit_amount)",
+      semantics: snapshot, time_agg: last, format: amount,
+      sensitivity: HIGH }
+
+  - { name: customer_exposure_amount, label: 单客户敞口金额, code: M143,
+      fact: dws_exposure_daily, filter: "exposure_type='CUSTOMER'",
+      formula: SUM(exposure_amount),
+      semantics: snapshot, time_agg: last, format: amount,
+      sensitivity: HIGH }
+
+  - { name: customer_exposure_top, label: Top客户敞口集中度, code: M144,
+      fact: dws_exposure_daily, filter: "exposure_type='CUSTOMER'",
+      formula: "topn_ratio(exposure_amount, entity_id, 10)",
+      semantics: virtual, format: percent }
+
+  - { name: origin_exposure_tonnage, label: 单产地敞口吨数, code: M145,
+      fact: dws_exposure_daily, filter: "exposure_type='ORIGIN'",
+      formula: SUM(exposure_tonnage),
+      semantics: snapshot, time_agg: last, format: ton,
+      sensitivity: MEDIUM }
+
+  - { name: origin_exposure_top, label: 产地敞口集中度, code: M146,
+      fact: dws_exposure_daily, filter: "exposure_type='ORIGIN'",
+      formula: "topn_ratio(exposure_tonnage, entity_id, 5)",
+      semantics: virtual, format: percent }
+
+  - { name: hedge_net_exposure, label: 套保净敞口吨数, code: M147,
+      synonyms: [期现敞口, 期货裸头寸],
+      fact: dws_hedge_position_daily,
+      formula: SUM(net_exposure_tonnage),
+      semantics: snapshot, time_agg: last, format: ton,
+      sensitivity: HIGH, bizToken_multiplier: 1.5,
+      applicable: [TRADE, MILL] }
+
+  - { name: hedge_net_exposure_breach, label: 套保敞口超限次数, code: M148,
+      fact: dws_hedge_position_daily, formula: SUM(breach),
+      format: count, applicable: [TRADE, MILL] }
+
+  - { name: ar_aging_overdue_rate, label: 逾期应收占比, code: M149,
+      fact: dws_ar_snapshot,
+      formula: "SUM(overdue_amount)/NULLIF(SUM(ar_amount),0)",
+      semantics: snapshot, time_agg: last, format: percent }
+
+  - { name: customer_risk_score, label: 客户综合风险评分, code: M150,
+      requires_metrics: [credit_utilization_rate, ar_aging_overdue_rate, customer_capital_days],
+      formula: "0.4*credit_utilization_rate + 0.4*ar_aging_overdue_rate + 0.2*(customer_capital_days/90.0)",
+      format: score, unit: 分,
+      sensitivity: HIGH,
+      note: "0~1, 越大风险越高; 权重可在管理后台配置" }
+
+## ============================================================
+## 告警规则（由 risk-alert-service 每小时扫描）
+## ============================================================
+alert_rules:
+
+  - id: ALERT_CREDIT_OVER
+    metric: credit_utilization_rate
+    when: "value > 0.95"
+    severity: HIGH
+    title: "客户授信使用率超 95%"
+    push_to: [客户经理, 风控, 老板]
+    cooldown_hours: 12
+    advice_template: "客户【{customer_name}】授信使用率 {value}, 建议立即催收或暂停发货"
+
+  - id: ALERT_CREDIT_BREACH
+    metric: credit_overlimit_amount
+    when: "value > 0"
+    severity: CRITICAL
+    title: "客户授信已超限"
+    push_to: [风控, 老板, CFO]
+
+  - id: ALERT_HEDGE_BREACH
+    metric: hedge_net_exposure
+    when: "value > hedge_position_limit"
+    severity: CRITICAL
+    title: "套保净敞口超限"
+    push_to: [财务总监, 老板]
+    advice_template: "{contract_code} 净敞口 {value} 吨, 已超上限 {limit} 吨, 建议立即对冲"
+
+  - id: ALERT_ORIGIN_CONCENTRATION
+    metric: origin_exposure_top
+    when: "value > 0.5"
+    severity: MEDIUM
+    title: "产地敞口集中度偏高"
+    cooldown_hours: 24
+
+  - id: ALERT_AR_OVERDUE_JUMP
+    metric: ar_aging_overdue_rate
+    when: "wow_change > 0.05"
+    severity: HIGH
+    title: "逾期应收周环比上升 5pp+"
+    push_to: [财务, CFO]
+
+  - id: ALERT_CUSTOMER_RISK_HIGH
+    metric: customer_risk_score
+    when: "value > 0.75"
+    severity: HIGH
+    title: "客户风险评分进入高风险区"
+    push_to: [客户经理, 风控]

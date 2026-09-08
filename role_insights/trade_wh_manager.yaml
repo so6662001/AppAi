@@ -1,0 +1,72 @@
+## ============================================================
+## 仓库主管 (TRADE_WH_MANAGER) 岗位画像
+## ============================================================
+role_code: TRADE_WH_MANAGER
+role_name: 仓库主管
+business_line: TRADE
+level: STAFF
+focus_areas: [inventory, aging, quality, accuracy]
+
+primary_kpis:
+  - {code: inv_amount,            weight: 0.20, direction: LOWER,  label: 库存金额}
+  - {code: inv_turnover_days,     weight: 0.30, direction: LOWER,  label: 库存周转天, benchmark: true}
+  - {code: aged_inv_pct,          weight: 0.25, direction: LOWER,  label: 库龄 90+ 占比}
+  - {code: damage_loss_pct,       weight: 0.15, direction: LOWER,  label: 损耗率}
+  - {code: count_accuracy,        weight: 0.10, direction: HIGHER, label: 盘点准确率}
+
+rules:
+  - id: WH_TURNOVER_SLOW
+    category: WEAKNESS
+    severity: HIGH
+    title: 库存周转过慢
+    when: "inv_turnover_days > benchmark('TRADE','inv_turnover_days').p50"
+    finding: "周转 {inv_turnover_days:.0f} 天, 行业 {p50:.0f} 天, 多 {gap:.0f} 天"
+    impact: "多占资金 ¥{extra_capital:,.0f}, 仓储费 ¥{storage_cost:,.0f}"
+    actions:
+      - {label: 看慢销 SKU, type: navigate, path: "/drilldown?metric=inv_amount&dim=material&filter=slow"}
+      - {label: AI 出特价方案, type: chat, prompt: "哪些慢销品该挂特价?"}
+    score_impact: 16
+
+  - id: WH_AGED_INV
+    category: RISK
+    severity: HIGH
+    title: 库龄 90+ 天 占比偏高
+    when: "aged_inv_pct > 0.20"
+    finding: "库龄 90+ 天 {aged_inv_pct:.0%} (¥{aged_amt:,.0f}), 多为 {top_aged_origin}"
+    impact: "继续放置月折价 ¥{depreciation:,.0f}, 占地 {area_ratio:.0%}"
+    actions:
+      - {label: 看呆滞清单, type: navigate, path: "/drilldown?metric=aged_inv&dim=material"}
+      - {label: 一键挂特价, type: action, handler: createDiscountSku}
+      - {label: 调拨方案, type: chat, prompt: "哪些呆滞可调到其他仓?"}
+    score_impact: 14
+
+  - id: WH_LOSS_HIGH
+    category: COMPLIANCE
+    severity: MEDIUM
+    title: 损耗率偏高
+    when: "damage_loss_pct > 0.008"
+    finding: "本月损耗率 {damage_loss_pct:.2%}, 公司红线 0.8%"
+    impact: "损失金额 ¥{loss_amt:,.0f}, 主要损耗品 {top_loss_material}"
+    actions:
+      - {label: 看损耗明细, type: navigate, path: "/inventory/loss"}
+    score_impact: 8
+
+  - id: WH_COUNT_LOW
+    category: COMPLIANCE
+    severity: MEDIUM
+    title: 盘点准确率偏低
+    when: "count_accuracy < 0.98"
+    finding: "盘点准确率 {count_accuracy:.1%}, 公司标准 ≥98%"
+    impact: "账实差异 {diff_count} 笔, 涉及金额 ¥{diff_amt:,.0f}"
+    actions:
+      - {label: 看差异明细, type: navigate, path: "/inventory/count-diff"}
+    score_impact: 6
+
+routines:
+  - "查看库龄分布"
+  - "查看呆滞品 Top 20"
+  - "查看损耗记录"
+
+education:
+  - topic: 怎么处置呆滞品
+  - topic: 怎么提高盘点准确率

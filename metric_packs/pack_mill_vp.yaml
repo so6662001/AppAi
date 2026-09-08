@@ -1,0 +1,36 @@
+pack_id: PK_MILL_VP
+name: 生产副总包-钢厂
+business_line: MILL
+role_code: MILL_VP
+metrics:
+  - melt_tonnage
+  - cast_tonnage
+  - hot_rolling_tonnage
+  - cold_rolling_tonnage
+  - coating_tonnage
+  - plan_attainment_rate
+  - oee
+  - availability
+  - performance
+  - quality_rate
+  - yield_rate
+  - burn_loss_rate
+  - scrap_rate
+  - energy_per_ton
+  - cost_per_ton
+  - material_utilization
+summary_kpis: [hot_rolling_tonnage, oee, yield_rate, burn_loss_rate]
+briefing_cards: [SUMMARY, INSIGHT, ANOMALY, FORECAST]
+recommended_questions:
+  - 各工序产量
+  - 总成材率
+  - 烧损率
+  - 各产线 OEE
+  - 计划达成
+  - 吨钢能耗
+  - 设备故障次数
+  - 钢卷降级率
+  - 工艺质量
+  - 废品率
+default_subscriptions: [TPL_MILL_PRODUCTION_DAILY]
+default_dashboard: /pages/dashboard/mill-vp

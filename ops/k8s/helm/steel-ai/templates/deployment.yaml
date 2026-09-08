@@ -1,0 +1,73 @@
+# 统一 Deployment 模板 - 遍历 .Values.services 生成多个 Deployment
+{{- range $name, $svc := .Values.services }}
+{{- if $svc.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  namespace: {{ $.Values.namespace }}
+  labels: { app: {{ $name }} }
+spec:
+  replicas: {{ default 1 $svc.replicas }}
+  selector: { matchLabels: { app: {{ $name }} } }
+  template:
+    metadata:
+      labels: { app: {{ $name }} }
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ $svc.port }}"
+    spec:
+      containers:
+        - name: {{ $name }}
+          image: {{ $.Values.image.registry }}/steel/{{ $name }}:{{ $.Values.image.tag }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          ports: [{ containerPort: {{ $svc.port }} }]
+          {{- if $svc.env }}
+          env:
+            {{- range $k, $v := $svc.env }}
+            - name: {{ $k }}
+              value: "{{ $v }}"
+            {{- end }}
+            - name: DB_URL
+              valueFrom: { secretKeyRef: { name: db-secret, key: url } }
+            - name: REDIS_HOST
+              value: redis
+          {{- end }}
+          resources:
+            {{- toYaml (default (dict "requests" (dict "cpu" "100m" "memory" "256Mi") "limits" (dict "cpu" "1" "memory" "1Gi")) $svc.resources) | nindent 12 }}
+          readinessProbe:
+            httpGet: { path: /health, port: {{ $svc.port }} }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: {{ $svc.port }} }
+            initialDelaySeconds: 30
+            periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  namespace: {{ $.Values.namespace }}
+spec:
+  selector: { app: {{ $name }} }
+  ports: [{ port: {{ $svc.port }}, targetPort: {{ $svc.port }} }]
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $name }}
+  namespace: {{ $.Values.namespace }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $name }}
+  minReplicas: {{ default 1 $svc.replicas }}
+  maxReplicas: {{ mul (default 1 $svc.replicas) 3 }}
+  metrics:
+    - type: Resource
+      resource: { name: cpu, target: { type: Utilization, averageUtilization: 70 } }
+{{- end }}
+{{- end }}

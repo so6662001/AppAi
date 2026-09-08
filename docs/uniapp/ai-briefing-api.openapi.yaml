@@ -1,0 +1,183 @@
+openapi: 3.0.3
+info:
+  title: AI 经营早报 API
+  version: 1.0.0
+servers:
+  - url: https://api.steel-erp.com/v1
+security:
+  - bearerAuth: []
+
+paths:
+
+  /briefing/today:
+    get:
+      summary: 今日早报
+      parameters:
+        - { name: date, in: query, schema: { type: string, format: date }, description: 缺省=当日 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BriefingFeed' }
+
+  /briefing/history:
+    get:
+      summary: 早报历史
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to,   in: query, schema: { type: string, format: date } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: size, in: query, schema: { type: integer, default: 30 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/BriefingFeed' } }
+                  total: { type: integer }
+
+  /briefing/cards/{card_id}/mark-read:
+    post:
+      summary: 标记已读
+      parameters: [{ name: card_id, in: path, required: true, schema: { type: integer } }]
+      responses: { '200': { description: OK } }
+
+  /briefing/cards/{card_id}/act:
+    post:
+      summary: 已采纳建议(执行了 action)
+      parameters: [{ name: card_id, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action_handler: { type: string }
+                action_result: { type: object }
+      responses: { '200': { description: OK } }
+
+  /briefing/cards/{card_id}/ignore:
+    post:
+      summary: 忽略卡片
+      parameters: [{ name: card_id, in: path, required: true, schema: { type: integer } }]
+      responses: { '200': { description: OK } }
+
+  /briefing/cards/{card_id}/feedback:
+    post:
+      summary: 👍/👎反馈
+      parameters: [{ name: card_id, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vote]
+              properties:
+                vote:   { type: string, enum: [UP, DOWN] }
+                reason: { type: string, enum: [NOT_USEFUL, WRONG, TOO_NOISY, OTHER] }
+                remark: { type: string }
+      responses: { '200': { description: OK } }
+
+  /briefing/layout:
+    get:
+      summary: 我的早报布局
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BriefingLayout' }
+    put:
+      summary: 更新布局/推送偏好
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BriefingLayout' }
+      responses: { '200': { description: OK } }
+
+  /briefing/push-test:
+    post:
+      summary: 测试推送(管理员)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                channel:  { type: string }
+                severity: { type: string }
+                user_id:  { type: integer }
+      responses: { '200': { description: OK } }
+
+
+components:
+
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+
+  schemas:
+
+    BriefingFeed:
+      type: object
+      properties:
+        biz_date: { type: string, format: date }
+        user:
+          type: object
+          properties:
+            id:            { type: integer }
+            role:          { type: string }
+            business_line: { type: string, enum: [TRADE, PROCESS, MILL] }
+        cards:
+          type: array
+          items: { $ref: '#/components/schemas/BriefingCard' }
+
+    BriefingCard:
+      type: object
+      properties:
+        card_id:    { type: integer }
+        type:       { type: string, enum: [SUMMARY, RISK, ADVICE, INSIGHT, ABC, FORECAST, CAPITAL, ANOMALY, RECOMMEND, BALANCE] }
+        severity:   { type: string, enum: [LOW, MEDIUM, HIGH, CRITICAL] }
+        rank_score: { type: number }
+        title:      { type: string }
+        payload:    { type: object }
+        source_metrics: { type: array, items: { type: string } }
+        actions:
+          type: array
+          items: { $ref: '#/components/schemas/CardAction' }
+        status:    { type: string }
+        expires_at:{ type: string, format: date-time }
+
+    CardAction:
+      type: object
+      required: [label, type]
+      properties:
+        label:   { type: string }
+        type:    { type: string, enum: [chat, action, navigate] }
+        dsl:     { type: object,  description: type=chat 时携带, 用于自动追问 }
+        handler: { type: string, description: type=action 时, 业务接口标识 }
+        params:  { type: object }
+        path:    { type: string, description: type=navigate 时, uniapp 路由路径 }
+        confirm: { type: object, description: 是否需要二次确认, {title, message} }
+
+    BriefingLayout:
+      type: object
+      properties:
+        cards:        { type: array, items: { type: string } }
+        kpi_metrics:  { type: array, items: { type: string }, description: SUMMARY 卡 4 个指标 }
+        silence_from: { type: string, example: '22:00' }
+        silence_to:   { type: string, example: '08:00' }
+        thresholds:
+          type: object
+          additionalProperties: { type: number }
+        push_channels:
+          type: object
+          properties:
+            LOW:      { type: array, items: { type: string } }
+            MEDIUM:   { type: array, items: { type: string } }
+            HIGH:     { type: array, items: { type: string } }
+            CRITICAL: { type: array, items: { type: string } }

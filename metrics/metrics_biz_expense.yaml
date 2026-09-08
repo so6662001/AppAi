@@ -1,0 +1,58 @@
+## ============================================================
+## 业务费 / 抹零 / 返点 (暗规则) 指标
+## 仅当对应 feature flag 启用时生效
+## ============================================================
+version: 1
+domain: biz_expense
+
+metrics:
+  - name: biz_fee_total
+    label: 业务费总额
+    code: BE001
+    formula: SUM(CASE WHEN expense_type='BIZ_FEE' THEN amount ELSE 0 END)
+    table: fact_biz_expense
+    unit: 元
+    requires_flag: ENABLE_BIZ_FEE
+    grain: [day, month, quarter]
+    synonyms: [业务招待, 客户公关费]
+
+  - name: roundoff_total
+    label: 抹零总额
+    code: BE002
+    formula: SUM(CASE WHEN expense_type='ROUNDOFF' THEN amount ELSE 0 END)
+    table: fact_biz_expense
+    unit: 元
+    requires_flag: ENABLE_ROUNDOFF
+    grain: [day, month]
+
+  - name: kickback_in_amount
+    label: 上游返点收入
+    code: BE003
+    formula: SUM(CASE WHEN expense_type='KICKBACK_IN' THEN amount ELSE 0 END)
+    table: fact_biz_expense
+    unit: 元
+    requires_flag: ENABLE_KICKBACK
+
+  - name: kickback_out_amount
+    label: 客户返点支出
+    code: BE004
+    formula: SUM(CASE WHEN expense_type='KICKBACK_OUT' THEN amount ELSE 0 END)
+    table: fact_biz_expense
+    unit: 元
+    requires_flag: ENABLE_KICKBACK
+
+  - name: biz_fee_to_gp_ratio
+    label: 业务费占毛利比
+    code: BE010
+    formula: SUM(CASE WHEN expense_type='BIZ_FEE' THEN amount ELSE 0 END) / NULLIF((SELECT SUM(gross_profit) FROM dws_income_statement_monthly), 0)
+    table: fact_biz_expense
+    unit: 比例
+    requires_flag: ENABLE_BIZ_FEE
+    warn_threshold: 0.10
+
+action_rules:
+  - id: BIZ_FEE_BURST
+    title: 业务费爆发增长
+    severity: MEDIUM
+    when: biz_fee_to_gp_ratio > 0.10
+    advice: "业务费占毛利 {biz_fee_to_gp_ratio:.0%}, 超出健康线 10%, 排查是否有滥用"

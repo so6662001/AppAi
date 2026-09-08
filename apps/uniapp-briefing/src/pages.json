@@ -1,0 +1,22 @@
+{
+  "pages": [
+    { "path": "pages/ai-briefing/index", "style": {
+        "navigationBarTitleText": "经营早报",
+        "enablePullDownRefresh": true,
+        "navigationBarBackgroundColor": "#f5f7fa"
+    } },
+    { "path": "pages/ai-briefing/history",        "style": { "navigationBarTitleText": "历史早报" } },
+    { "path": "pages/ai-briefing/layout-setting", "style": { "navigationBarTitleText": "早报设置" } },
+    { "path": "pages/scheduled-report/list",      "style": { "navigationBarTitleText": "我的定时报表" } },
+    { "path": "pages/scheduled-report/templates", "style": { "navigationBarTitleText": "报表模板" } },
+    { "path": "pages/scheduled-report/runs",      "style": { "navigationBarTitleText": "执行历史" } },
+    { "path": "pages/ai/chat",                    "style": { "navigationBarTitleText": "AI 经营助手" } },
+    { "path": "pages/onboarding/wizard",          "style": { "navigationBarTitleText": "欢迎使用", "navigationStyle": "custom" } },
+    { "path": "pages/commission/index",           "style": { "navigationBarTitleText": "我的提成" } }
+  ],
+  "globalStyle": {
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f5f7fa"
+  }
+}

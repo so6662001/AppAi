@@ -1,0 +1,21 @@
+pack_id: PK_PROCESS_OPERATOR
+name: 操作工包
+business_line: PROCESS
+role_code: OPERATOR
+metrics: [processing_tonnage, quality_rate, scrap_rate]
+summary_kpis: [processing_tonnage, quality_rate, scrap_rate, oee]
+briefing_cards: [SUMMARY]
+recommended_questions:
+  - 我今天的产量
+  - 我的班次良品率
+  - 我的废品率
+  - 我下班前还需要做几单
+  - 我的设备状态
+  - 今天的工单清单
+  - 我的换型记录
+  - 我的报工
+  - 工序卡片
+  - 班组对比
+default_subscriptions: []
+default_dashboard: /pages/my-shift
+row_acl_default: { resource: workcenter, rule: "operator_id = :current_user_id" }

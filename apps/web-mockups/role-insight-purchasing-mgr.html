@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>我的画像 · 采购经理</title>
+<link rel="stylesheet" href="./assets/shared.css">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  .pur-hero {
+    background: linear-gradient(135deg, #002766 0%, #391085 70%, #1677ff 100%);
+    color: #fff; padding: 28px; border-radius: 14px;
+    display: grid; grid-template-columns: 200px 1fr 320px; gap: 28px; align-items: center;
+    box-shadow: var(--shadow-md); margin-bottom: 16px;
+  }
+  .ring-large {
+    width: 160px; height: 160px; border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(0,0,0,.25) 60%, transparent 61% 100%),
+      conic-gradient(#faad14 0% 56%, rgba(255,255,255,.18) 56% 100%);
+    display: grid; place-items: center; margin: 0 auto;
+  }
+  .ring-large .v { font-size: 52px; font-weight: 800; }
+  .ring-large .s { font-size: 12px; color: #d6e4ff; }
+
+  /* 关键 KPI 大数字卡 */
+  .pk-card {
+    background: #fff; border: 1px solid var(--border); border-radius: 8px;
+    padding: 16px; text-align: center;
+  }
+  .pk-card.bad { border-color: #ffa39e; background: linear-gradient(180deg, #fff1f0, #fff); }
+  .pk-card.warn { border-color: #ffd591; background: linear-gradient(180deg, #fff7e6, #fff); }
+  .pk-card.good { border-color: #b7eb8f; background: linear-gradient(180deg, #f6ffed, #fff); }
+  .pk-card .l { font-size: 12px; color: var(--text-3); }
+  .pk-card .v { font-size: 28px; font-weight: 800; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .pk-card.bad .v { color: var(--danger); }
+  .pk-card.warn .v { color: var(--warning); }
+  .pk-card.good .v { color: var(--success); }
+  .pk-card .b { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+
+  /* 供应商卡 */
+  .supplier-row {
+    background: #fff; border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px 14px; margin-bottom: 6px;
+    display: grid; grid-template-columns: 32px 1fr 100px 100px 100px 100px; gap: 12px; align-items: center;
+  }
+  .supplier-row:hover { border-color: var(--primary); }
+  .supplier-row .rk { background: var(--text-3); color: #fff; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; }
+  .supplier-row.top1 .rk { background: var(--danger); }
+  .supplier-row .nm { font-weight: 600; }
+  .supplier-row .badge { font-size: 11px; color: var(--text-3); margin-left: 6px; }
+  .supplier-row .v { text-align: right; font-variant-numeric: tabular-nums; }
+  .supplier-row .v.bad { color: var(--danger); font-weight: 600; }
+  .supplier-row .v.good { color: var(--success); }
+
+  /* finding */
+  .finding { background: #fff; border-left: 4px solid var(--border); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; }
+  .finding.HIGH { border-left-color: var(--danger); }
+  .finding.MEDIUM { border-left-color: var(--warning); }
+  .finding.LOW { border-left-color: var(--success); }
+  .finding .h { display: flex; gap: 10px; align-items: center; }
+  .finding .h .cat { font-size: 10px; padding: 1px 7px; border-radius: 4px; font-weight: 600; }
+  .finding .h .cat.RISK { background:#fff1f0; color:var(--danger); }
+  .finding .h .cat.WEAKNESS { background:#fff7e6; color:var(--warning); }
+  .finding .h .cat.OPPORTUNITY { background:#e6fffb; color:var(--info); }
+  .finding .h .ti { font-weight: 600; font-size: 14px; }
+  .finding .h .imp { margin-left: auto; font-size: 11px; color: var(--text-3); }
+  .finding .desc { font-size: 12px; color: var(--text-2); margin-top: 6px; line-height: 1.6; }
+  .finding .desc b { color: var(--text); }
+  .finding .impact { background: #fff7e6; padding: 6px 10px; border-radius: 4px; font-size: 12px; color: var(--text-2); margin-top: 8px; }
+  .finding .impact b { color: var(--warning); }
+  .finding .actions { display: flex; gap: 6px; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell" data-active="role-insight-purchasing-mgr.html" data-crumbs="人与提成 <span class=&quot;sep&quot;>/</span> <span class=&quot;cur&quot;>我的画像 · 采购经理</span>" data-user="吴某" data-role="采购经理 · 板材线"></div>
+
+  <main class="main">
+
+    <!-- HERO -->
+    <div class="pur-hero">
+      <div>
+        <div class="ring-large">
+          <div style="text-align:center;"><div class="v">56</div><div class="s">/ 100 · C 待改进</div></div>
+        </div>
+        <div style="text-align:center; margin-top: 12px;">
+          <span class="tag" style="background: rgba(255,82,82,.3); color:#fff; border-color: rgba(255,255,255,.3);">📉 比上月 -4</span>
+        </div>
+      </div>
+
+      <div>
+        <div style="color:#d6e4ff; font-size:13px;">2026-05-28 · 采购经理画像 · 板材线</div>
+        <h2 style="margin:6px 0 14px; font-size:24px; font-weight:700;">吴经理, 您本月得分 56, 需要 3 项紧急改进</h2>
+        <div style="background: rgba(255,255,255,.08); padding: 14px; border-radius: 8px; line-height: 1.8; font-size: 13px;">
+          采购是钢贸利润源头, 您本月有 <b style="color:#ff7875;">3 个严重问题</b>:
+          <ul style="margin: 8px 0 0 0; padding-left: 18px; color: #d6e4ff;">
+            <li><b>采购均价比 Mysteel 指数高 52 元/吨</b> · 多花 ¥25 万 (吞掉销售毛利 18%)</li>
+            <li><b>沙钢系占采购 48%</b> · 供应链单点风险</li>
+            <li><b>库存 8200 吨, 仅对冲 5100 吨</b> · 缺口 3100 吨, 价格波动直接亏</li>
+          </ul>
+        </div>
+      </div>
+
+      <div>
+        <div style="color:#d6e4ff; font-size:13px; margin-bottom: 12px;">📊 7 大 KPI vs 行业</div>
+        <div id="ch_radar" style="height: 220px"></div>
+      </div>
+    </div>
+
+    <!-- 7 大 KPI 大数字卡 -->
+    <div class="row-4 mb-16">
+      <div class="pk-card bad">
+        <div class="l">采购价对指数偏离</div>
+        <div class="v">+¥52<span style="font-size:13px"> /吨</span></div>
+        <div class="b">合理 ≤30 · ❌ 超 73%</div>
+      </div>
+      <div class="pk-card warn">
+        <div class="l">Top1 供应商占比</div>
+        <div class="v">48%</div>
+        <div class="b">沙钢系 · ⚠ 红线 45%</div>
+      </div>
+      <div class="pk-card warn">
+        <div class="l">应付周转天数 DPO</div>
+        <div class="v">22<span style="font-size:13px"> 天</span></div>
+        <div class="b">行业中位 28 · 短 6 天</div>
+      </div>
+      <div class="pk-card warn">
+        <div class="l">入库 IQC 合格率</div>
+        <div class="v">94.8%</div>
+        <div class="b">目标 96% · ⚠ 8 单不合格</div>
+      </div>
+    </div>
+    <div class="row-4 mb-16">
+      <div class="pk-card warn">
+        <div class="l">预付款余额</div>
+        <div class="v">¥1,820<span style="font-size:13px">万</span></div>
+        <div class="b">安全线 1000 · ⚠ 超 82%</div>
+      </div>
+      <div class="pk-card bad">
+        <div class="l">库存对冲匹配度</div>
+        <div class="v">62%</div>
+        <div class="b">目标 ≥70% · ❌ 缺口 3100 吨</div>
+      </div>
+      <div class="pk-card warn">
+        <div class="l">库存周转天数</div>
+        <div class="v">56<span style="font-size:13px"> 天</span></div>
+        <div class="b">行业中位 42 · 多 14 天</div>
+      </div>
+      <div class="pk-card good">
+        <div class="l">本月采购总量</div>
+        <div class="v">4,820<span style="font-size:13px"> 吨</span></div>
+        <div class="b">环比 +6.8%</div>
+      </div>
+    </div>
+
+    <!-- 7 项 finding + 价格走势图 -->
+    <div class="row mb-16" style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px;">
+
+      <div class="card">
+        <div class="card-h">
+          <h3>📋 本月 7 个改进点 (按 AI 评分排序)</h3>
+          <div class="tools">
+            <button class="btn sm primary">高 4</button>
+            <button class="btn sm">中 3</button>
+          </div>
+        </div>
+        <div class="card-b">
+
+          <div class="finding HIGH">
+            <div class="h">
+              <span class="sev HIGH"></span>
+              <span class="cat WEAKNESS">WEAKNESS</span>
+              <span class="ti">采购均价高于市场指数 (买贵了)</span>
+              <span class="imp">-20 分</span>
+            </div>
+            <div class="desc">本月加权采购价比 Mysteel 指数高 <b>¥52/吨</b> (合理范围 ≤¥30)</div>
+            <div class="impact">💡 本月采购 4,820 吨, 额外多花 <b>¥250,640</b>, 等于吞掉销售毛利 <b>18%</b></div>
+            <div class="actions">
+              <button class="btn primary sm">哪些钢厂买贵了</button>
+              <button class="btn sm">💬 AI 提议价方案</button>
+              <button class="btn sm">看其他贸易商成交价</button>
+            </div>
+          </div>
+
+          <div class="finding HIGH">
+            <div class="h">
+              <span class="sev HIGH"></span>
+              <span class="cat RISK">RISK</span>
+              <span class="ti">库存与对冲不匹配</span>
+              <span class="imp">-15 分</span>
+            </div>
+            <div class="desc">持仓 <b>8,200 吨</b>, 对冲 <b>5,100 吨</b>, 匹配度 <b>62%</b></div>
+            <div class="impact">💡 未对冲 <b>3,100 吨</b>, 价格波动 100 元/吨损失 <b>¥310,000</b></div>
+            <div class="actions">
+              <button class="btn primary sm">📞 联系期货部</button>
+              <button class="btn sm">查看对冲缺口</button>
+            </div>
+          </div>
+
+          <div class="finding HIGH">
+            <div class="h">
+              <span class="sev HIGH"></span>
+              <span class="cat RISK">RISK</span>
+              <span class="ti">上游单一供应商占比过高</span>
+              <span class="imp">-14 分</span>
+            </div>
+            <div class="desc">Top1 供应商 <b>沙钢</b> 占采购 <b>48%</b> (¥2,240 万)</div>
+            <div class="impact">💡 若该供应商断货或调价, 直接影响 <b>2,300 吨/月</b> 业务, 流失客户风险</div>
+            <div class="actions">
+              <button class="btn primary sm">看采购结构</button>
+              <button class="btn sm">💬 AI 推荐替代供应商</button>
+            </div>
+          </div>
+
+          <div class="finding HIGH">
+            <div class="h">
+              <span class="sev HIGH"></span>
+              <span class="cat WEAKNESS">WEAKNESS</span>
+              <span class="ti">入库 IQC 合格率偏低</span>
+              <span class="imp">-12 分</span>
+            </div>
+            <div class="desc">本月入库合格率 <b>94.8%</b>, 不合格 <b>8 单</b>, 主要来源 <b>永钢系</b></div>
+            <div class="impact">💡 退货物流 + 信誉影响, 已收到客户投诉 <b>3 起</b></div>
+            <div class="actions">
+              <button class="btn primary sm">看不合格明细</button>
+              <button class="btn danger sm">对 永钢系 提整改</button>
+            </div>
+          </div>
+
+          <div class="finding MEDIUM">
+            <div class="h">
+              <span class="sev MEDIUM"></span>
+              <span class="cat WEAKNESS">WEAKNESS</span>
+              <span class="ti">库存周转过慢 (可能买多了)</span>
+              <span class="imp">-12 分</span>
+            </div>
+            <div class="desc">库存周转 <b>56 天</b>, 行业中位 <b>42 天</b>, 多 <b>14 天</b></div>
+            <div class="impact">💡 多占资金 <b>¥8,400,000</b>, 仓储费 <b>¥84,000</b>, 跌价风险大</div>
+            <div class="actions">
+              <button class="btn primary sm">看慢销 SKU</button>
+              <button class="btn sm">💬 AI 出特价方案</button>
+            </div>
+          </div>
+
+          <div class="finding MEDIUM">
+            <div class="h">
+              <span class="sev MEDIUM"></span>
+              <span class="cat WEAKNESS">WEAKNESS</span>
+              <span class="ti">应付账期偏短 (没占够上游资金)</span>
+              <span class="imp">-10 分</span>
+            </div>
+            <div class="desc">应付周转 <b>22 天</b>, 行业中位 <b>28 天</b>, 短 <b>6 天</b></div>
+            <div class="impact">💡 若拉长到行业水平, 可释放运营资金 <b>¥8,400,000</b>, 年化省利息 <b>¥378,000</b></div>
+            <div class="actions">
+              <button class="btn primary sm">看各供应商账期</button>
+              <button class="btn sm">💬 AI 提议谈判方案</button>
+            </div>
+          </div>
+
+          <div class="finding MEDIUM">
+            <div class="h">
+              <span class="sev MEDIUM"></span>
+              <span class="cat RISK">RISK</span>
+              <span class="ti">预付款占用过多</span>
+              <span class="imp">-10 分</span>
+            </div>
+            <div class="desc">预付款余额 <b>¥18,200,000</b>, 远超安全线 <b>¥10,000,000</b></div>
+            <div class="impact">💡 资金被上游占用, 年化资金成本约 <b>¥378,000</b>, 若上游违约直接坏账</div>
+            <div class="actions">
+              <button class="btn primary sm">看预付款明细</button>
+              <button class="btn sm">💬 AI 评估上游信用</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="col">
+        <!-- 价格走势 -->
+        <div class="card">
+          <div class="card-h">
+            <h3>📈 近 30 天 · 我方采购价 vs Mysteel</h3>
+            <div class="tools">
+              <span class="tag">采购均价</span>
+              <span class="tag info">Mysteel</span>
+            </div>
+          </div>
+          <div class="card-b"><div id="ch_price" class="chart" style="height: 240px"></div></div>
+        </div>
+
+        <!-- AI 采购参谋 -->
+        <div class="card">
+          <div class="card-h">
+            <h3>🤖 AI 采购参谋</h3>
+            <div class="tools"><span class="tag info">DeepSeek</span></div>
+          </div>
+          <div class="card-b">
+            <div style="background: #f0f5ff; padding: 14px; border-radius: 8px; font-size: 13px; line-height: 1.8;">
+              吴经理, 采购是钢贸利润源头, 您这 3 件最紧急:<br>
+              1. <b>立即降低沙钢系采购占比</b> (45% → 35%), 给永钢/河钢分单, 平均买价能压 ¥20/吨<br>
+              2. <b>本周内与期货部对接</b>, 把 3,100 吨缺口补上, 否则单边敞口太大<br>
+              3. <b>找沙钢谈延期付款</b>: 22 → 35 天, 释放 ¥520 万运营资金<br>
+              <br>
+              做完这 3 件, 下月画像可冲到 <b>72 分 (B 级)</b>.
+            </div>
+            <div class="flex gap-8 mt-12">
+              <button class="btn primary sm">📋 生成行动清单</button>
+              <button class="btn sm">💬 详细规划</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 供应商 Top 5 + 月度趋势 -->
+    <div class="row mb-16" style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px;">
+
+      <div class="card">
+        <div class="card-h">
+          <h3>🏭 供应商 Top 5 · 综合评估</h3>
+          <div class="tools">
+            <span class="muted">[采购量 / 买价偏离 / 账期 / 合格率 / 综合分]</span>
+          </div>
+        </div>
+        <div class="card-b">
+
+          <div class="supplier-row top1">
+            <div class="rk">1</div>
+            <div>
+              <div class="nm">沙钢系 <span class="badge" style="background:#fff1f0;color:var(--danger);padding:1px 6px;border-radius:3px;">⚠ 集中度过高</span></div>
+              <div class="muted" style="font-size:11px;">板材主供应商 · 合作 6 年</div>
+            </div>
+            <div class="v">2,310 吨</div>
+            <div class="v bad">+¥58/吨</div>
+            <div class="v">25 天</div>
+            <div class="v good">98.2%</div>
+          </div>
+
+          <div class="supplier-row">
+            <div class="rk">2</div>
+            <div><div class="nm">永钢系</div><div class="muted" style="font-size:11px;">板材辅助供应商</div></div>
+            <div class="v">820 吨</div>
+            <div class="v bad">+¥42/吨</div>
+            <div class="v">20 天</div>
+            <div class="v bad">91.5%</div>
+          </div>
+
+          <div class="supplier-row">
+            <div class="rk">3</div>
+            <div><div class="nm">河钢系</div><div class="muted" style="font-size:11px;">华北片区</div></div>
+            <div class="v">680 吨</div>
+            <div class="v">+¥28/吨</div>
+            <div class="v">18 天</div>
+            <div class="v good">96.8%</div>
+          </div>
+
+          <div class="supplier-row">
+            <div class="rk">4</div>
+            <div><div class="nm">宝武系</div><div class="muted" style="font-size:11px;">高端品类</div></div>
+            <div class="v">560 吨</div>
+            <div class="v good">+¥18/吨</div>
+            <div class="v">22 天</div>
+            <div class="v good">99.1%</div>
+          </div>
+
+          <div class="supplier-row">
+            <div class="rk">5</div>
+            <div><div class="nm">马钢系</div><div class="muted" style="font-size:11px;">西南片区</div></div>
+            <div class="v">450 吨</div>
+            <div class="v">+¥35/吨</div>
+            <div class="v">24 天</div>
+            <div class="v good">96.4%</div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h3>📊 6 月采购健康度趋势</h3></div>
+        <div class="card-b"><div id="ch_trend" class="chart" style="height: 280px"></div></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="./assets/layout.js"></script>
+<script>
+  // 7 KPI 雷达
+  echarts.init(document.getElementById('ch_radar')).setOption({
+    radar: {
+      indicator: [
+        { name: '买价合理', max: 100 },
+        { name: '上游分散', max: 100 },
+        { name: '账期占用', max: 100 },
+        { name: 'IQC', max: 100 },
+        { name: '预付控制', max: 100 },
+        { name: '对冲匹配', max: 100 },
+        { name: '库存周转', max: 100 },
+      ],
+      shape: 'polygon',
+      splitArea: { areaStyle: { color: ['transparent','rgba(255,255,255,.05)'] } },
+      splitLine: { lineStyle: { color: 'rgba(255,255,255,.2)' } },
+      axisLine: { lineStyle: { color: 'rgba(255,255,255,.2)' } },
+      axisName: { color: '#d6e4ff', fontSize: 11 },
+      center: ['50%', '52%'], radius: '68%',
+    },
+    series: [{
+      type: 'radar',
+      data: [
+        { value: [35, 50, 60, 65, 40, 45, 50], name: '我司', areaStyle: {opacity: 0.35, color: '#ff7875'}, lineStyle: {color: '#ff7875', width: 2}, itemStyle: {color: '#ff7875'} },
+        { value: [70, 70, 70, 75, 70, 75, 70], name: '行业 P50', areaStyle: {opacity: 0.15, color: '#52c41a'}, lineStyle: {color: '#95de64', type: 'dashed'}, itemStyle: {color: '#95de64'} },
+      ],
+    }],
+  });
+
+  // 30 天价格对比
+  const days = Array.from({length: 30}, (_,i) => `5/${i+1}`);
+  echarts.init(document.getElementById('ch_price')).setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { top: 4 },
+    grid: { left: 60, right: 30, top: 40, bottom: 30 },
+    xAxis: { type: 'category', data: days },
+    yAxis: { type: 'value', name: '元/吨', scale: true },
+    series: [
+      { name: 'Mysteel', type: 'line', smooth: true, symbol: 'none',
+        data: [4080,4080,4090,4100,4090,4100,4110,4120,4120,4130,4140,4150,4160,4170,4180,4190,4180,4170,4180,4190,4200,4180,4170,4180,4190,4200,4210,4200,4180,4170],
+        lineStyle: {color:'#1677ff', width: 2.5}, itemStyle:{color:'#1677ff'} },
+      { name: '我方采购均价', type: 'line', smooth: true, symbol: 'none',
+        data: [4120,4125,4135,4145,4140,4148,4160,4178,4180,4192,4195,4202,4215,4225,4235,4245,4232,4222,4232,4245,4258,4232,4222,4235,4242,4252,4262,4252,4235,4225],
+        lineStyle: {color:'#f5222d', width: 2.5}, itemStyle:{color:'#f5222d'} },
+    ],
+  });
+
+  // 6 月趋势
+  echarts.init(document.getElementById('ch_trend')).setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { top: 4 },
+    grid: { left: 50, right: 30, top: 40, bottom: 30 },
+    xAxis: { type:'category', data: ['12月','1月','2月','3月','4月','5月'] },
+    yAxis: { type:'value', min: 40, max: 80 },
+    series: [
+      { type:'line', smooth: true, data: [62, 65, 68, 64, 60, 56], itemStyle:{color:'#f5222d'},
+        lineStyle:{width:3}, areaStyle:{color:'rgba(245,34,45,.15)'}, name:'采购健康度' },
+      { type: 'line', smooth: true, data: [65, 65, 65, 65, 65, 65], itemStyle:{color:'#52c41a'},
+        lineStyle: {type: 'dashed', color:'#52c41a'}, symbol: 'none', name: '行业 P50' },
+    ],
+  });
+</script>
+</body>
+</html>

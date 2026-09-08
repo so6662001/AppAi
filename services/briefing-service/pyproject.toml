@@ -1,0 +1,23 @@
+[project]
+name = "briefing-service"
+version = "0.1.0"
+description = "AI 经营早报服务 - 卡片生成+读取+反馈"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.111", "uvicorn[standard]>=0.30", "pydantic>=2.7",
+    "sqlalchemy>=2.0", "pymysql>=1.1", "apscheduler>=3.10",
+    "httpx>=0.27", "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

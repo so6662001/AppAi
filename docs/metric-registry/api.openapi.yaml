@@ -1,0 +1,500 @@
+openapi: 3.0.3
+info:
+  title: 指标注册中心 API
+  description: 钢铁行业 AI 经营分析平台 - 指标治理与生命周期管理
+  version: 1.0.0
+servers:
+  - url: https://api.steel-erp.com/registry/v1
+
+security:
+  - bearerAuth: []
+
+paths:
+
+  # ====================== 指标主表 ======================
+  /metrics:
+    get:
+      summary: 指标列表（搜索/筛选/分页）
+      parameters:
+        - { name: q,           in: query, schema: { type: string }, description: 全文搜索(名称/编号/同义词/Owner) }
+        - { name: domain,      in: query, schema: { type: string, enum: [SALES, INVENTORY, PRODUCTION, PROCUREMENT, QUALITY, CAPITAL, RISK, FORECAST, ABC] } }
+        - { name: status,      in: query, schema: { type: string, enum: [DRAFT, REVIEW, APPROVED, PUBLISHED, DEPRECATED] } }
+        - { name: sensitivity, in: query, schema: { type: string, enum: [LOW, MEDIUM, HIGH] } }
+        - { name: applicable,  in: query, schema: { type: array, items: { type: string } }, style: form, explode: true }
+        - { name: owner,       in: query, schema: { type: string } }
+        - { name: tag,         in: query, schema: { type: string } }
+        - { name: page,        in: query, schema: { type: integer, default: 1 } }
+        - { name: size,        in: query, schema: { type: integer, default: 50, maximum: 200 } }
+        - { name: sort,        in: query, schema: { type: string, example: '-call_count_7d' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total: { type: integer }
+                  page:  { type: integer }
+                  size:  { type: integer }
+                  items: { type: array, items: { $ref: '#/components/schemas/MetricSummary' } }
+    post:
+      summary: 新建指标（自动创建 CREATE 类型变更申请，进入 DRAFT）
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/MetricInput' } } }
+      responses:
+        '201':
+          description: Created
+          content: { application/json: { schema: { $ref: '#/components/schemas/ChangeRequest' } } }
+
+  /metrics/{code}:
+    get:
+      summary: 指标详情
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string } }
+        - { name: version, in: query, required: false, schema: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/Metric' } } }
+    patch:
+      summary: 编辑指标（自动创建变更申请, 不直接更新主表）
+      parameters: [{ name: code, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                changes:    { $ref: '#/components/schemas/MetricInput' }
+                change_note: { type: string }
+      responses:
+        '200':
+          description: Change request created
+          content: { application/json: { schema: { $ref: '#/components/schemas/ChangeRequest' } } }
+    delete:
+      summary: 废弃指标（创建 DEPRECATE 变更）
+      parameters: [{ name: code, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK }
+
+  /metrics/{code}/versions:
+    get:
+      summary: 指标版本历史
+      parameters: [{ name: code, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/MetricVersion' } }
+
+  /metrics/{code}/preview-sql:
+    post:
+      summary: SQL 预览（编译器试编译，用于详情页与编辑器）
+      parameters: [{ name: code, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dimensions: { type: array, items: { type: string } }
+                time:       { type: object }
+                filters:    { type: array }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sql:           { type: string }
+                  est_rows:      { type: integer }
+                  tables_used:   { type: array, items: { type: string } }
+                  warnings:      { type: array, items: { type: string } }
+
+  /metrics/{code}/sandbox-run:
+    post:
+      summary: 试算（沙箱执行, 限制扫描行/超时, 影响分析也走这个）
+      parameters: [{ name: code, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SandboxRunInput' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rows:   { type: array }
+                  exec_ms:{ type: integer }
+                  scan_rows: { type: integer }
+
+  /metrics/{code}/lineage:
+    get:
+      summary: 血缘图（上下游指标 + 看板/会话/计费引用）
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string } }
+        - { name: depth, in: query, schema: { type: integer, default: 2 } }
+        - { name: direction, in: query, schema: { type: string, enum: [up, down, both], default: both } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  nodes: { type: array, items: { type: object } }
+                  edges: { type: array, items: { type: object } }
+
+  /metrics/{code}/impact:
+    get:
+      summary: 影响分析（变更前必跑）
+      parameters: [{ name: code, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImpactSummary' }
+
+  # ====================== 变更申请 ======================
+  /change-requests:
+    get:
+      summary: 变更申请列表
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [DRAFT, SUBMITTED, APPROVED, REJECTED, MERGED, CANCELED] } }
+        - { name: mine,   in: query, schema: { type: boolean } }
+        - { name: pending_my_approval, in: query, schema: { type: boolean } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/ChangeRequest' } }
+    post:
+      summary: 手动创建变更申请（罕用，多由 PATCH /metrics 自动建）
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ChangeRequestInput' } } }
+      responses:
+        '201': { description: Created }
+
+  /change-requests/{id}:
+    get:
+      summary: 变更详情（含 Diff + 影响）
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200':
+          description: OK
+          content: { application/json: { schema: { $ref: '#/components/schemas/ChangeRequest' } } }
+
+  /change-requests/{id}/submit:
+    post:
+      summary: 提交审批（DRAFT → SUBMITTED）
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: OK }
+
+  /change-requests/{id}/approve:
+    post:
+      summary: 审批通过
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { comment: { type: string } } } } }
+      responses:
+        '200': { description: OK }
+
+  /change-requests/{id}/reject:
+    post:
+      summary: 审批打回
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [comment]
+              properties: { comment: { type: string } }
+      responses:
+        '200': { description: OK }
+
+  /change-requests/{id}/merge:
+    post:
+      summary: 合并（更新 metric_def + 通知订阅者 + 走 CI 发布）
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: OK }
+
+  /change-requests/{id}/cancel:
+    post:
+      summary: 取消申请
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200': { description: OK }
+
+  # ====================== 订阅 ======================
+  /subscriptions:
+    get:
+      summary: 我的订阅
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Subscription' } }
+    post:
+      summary: 订阅一个指标
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [metric_code]
+              properties:
+                metric_code: { type: string }
+                notify_on:   { type: array, items: { type: string, enum: [FORMULA, DEPRECATE, SLA_BREACH, QUALITY] } }
+                channel:     { type: array, items: { type: string, enum: [EMAIL, DINGTALK, WECOM, INBOX] } }
+      responses:
+        '201': { description: Created }
+
+  /subscriptions/{id}:
+    delete:
+      summary: 取消订阅
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses: { '204': { description: OK } }
+
+  # ====================== 数据质量 ======================
+  /quality/events:
+    get:
+      summary: 质量事件列表
+      parameters:
+        - { name: metric_code, in: query, schema: { type: string } }
+        - { name: severity,    in: query, schema: { type: string, enum: [LOW, MEDIUM, HIGH, CRITICAL] } }
+        - { name: status,      in: query, schema: { type: string, enum: [OPEN, RESOLVED] } }
+        - { name: from,        in: query, schema: { type: string, format: date-time } }
+        - { name: to,          in: query, schema: { type: string, format: date-time } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/QualityEvent' } }
+
+  /quality/events/{id}/resolve:
+    post:
+      summary: 标记已解决
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses: { '200': { description: OK } }
+
+  /quality/sla-heatmap:
+    get:
+      summary: 指标 × 日期的 SLA 达成率热力图
+      parameters:
+        - { name: domain, in: query, schema: { type: string } }
+        - { name: days,   in: query, schema: { type: integer, default: 30 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  matrix: { type: array, items: { type: object, properties: { metric_code: {type: string}, date: {type: string}, sla_pct: {type: number}, status: {type: string} } } }
+
+  # ====================== 概览 ======================
+  /overview:
+    get:
+      summary: 注册中心首页数据
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_metrics:  { type: integer }
+                  by_status:      { type: object, additionalProperties: { type: integer } }
+                  owner_top5:     { type: array, items: { type: object, properties: { owner: {type:string}, count: {type:integer} } } }
+                  sla_health:     { type: object, properties: { healthy: {type:integer}, at_risk: {type:integer}, failing: {type:integer} } }
+                  top_called_7d:  { type: array, items: { type: object, properties: { metric_code:{type:string}, calls:{type:integer}, cost_cny:{type:number} } } }
+                  recent_changes: { type: array, items: { $ref: '#/components/schemas/ChangeRequest' } }
+
+  # ====================== Git 同步 ======================
+  /sync/from-git:
+    post:
+      summary: 从 metrics/*.yaml 重新加载到 metric_def (CI/CD 触发)
+      responses: { '200': { description: OK } }
+
+  /sync/to-git:
+    post:
+      summary: 把 metric_def 当前状态导出为 YAML 文件并自动 PR
+      responses: { '200': { description: OK } }
+
+
+components:
+
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+
+  schemas:
+
+    MetricSummary:
+      type: object
+      properties:
+        metric_code: { type: string, example: M120 }
+        name:        { type: string, example: net_profit }
+        name_zh:     { type: string, example: 销售净利润 }
+        domain:      { type: string }
+        version:     { type: string }
+        status:      { type: string }
+        sensitivity: { type: string }
+        owner:       { type: string }
+        sla_health:  { type: string, enum: [HEALTHY, AT_RISK, FAILING] }
+        call_count_7d: { type: integer }
+
+    Metric:
+      allOf:
+        - $ref: '#/components/schemas/MetricSummary'
+        - type: object
+          properties:
+            synonyms:        { type: array, items: { type: string } }
+            applicable:      { type: array, items: { type: string } }
+            fact:            { type: string }
+            formula:         { type: string }
+            semantics:       { type: string }
+            time_agg:        { type: string }
+            format:          { type: string }
+            unit:            { type: string }
+            requires_metrics:{ type: array, items: { type: string } }
+            filter_expr:     { type: string }
+            join_tables:     { type: array, items: { type: string } }
+            bizToken_multiplier: { type: number }
+            steward:         { type: string }
+            approvers:       { type: array, items: { type: string } }
+            sla:             { $ref: '#/components/schemas/Sla' }
+            notes:           { type: string }
+            tags:             { type: array, items: { type: string } }
+            created_at:      { type: string, format: date-time }
+            updated_at:      { type: string, format: date-time }
+
+    MetricInput:
+      type: object
+      properties:
+        name:        { type: string }
+        name_zh:     { type: string }
+        domain:      { type: string }
+        synonyms:    { type: array, items: { type: string } }
+        applicable:  { type: array, items: { type: string } }
+        fact:        { type: string }
+        formula:     { type: string }
+        semantics:   { type: string }
+        time_agg:    { type: string }
+        format:      { type: string }
+        unit:        { type: string }
+        sensitivity: { type: string }
+        bizToken_multiplier: { type: number }
+        owner:       { type: string }
+        steward:     { type: string }
+        approvers:   { type: array, items: { type: string } }
+        sla:         { $ref: '#/components/schemas/Sla' }
+        requires_metrics: { type: array, items: { type: string } }
+        filter_expr: { type: string }
+        join_tables: { type: array, items: { type: string } }
+        tags:        { type: array, items: { type: string } }
+        notes:       { type: string }
+
+    MetricVersion:
+      type: object
+      properties:
+        version: { type: string }
+        status:  { type: string }
+        changed_by: { type: string }
+        changed_at: { type: string, format: date-time }
+        change_note: { type: string }
+        snapshot: { $ref: '#/components/schemas/Metric' }
+
+    ChangeRequest:
+      type: object
+      properties:
+        request_id:    { type: integer }
+        metric_code:   { type: string }
+        change_type:   { type: string, enum: [CREATE, FORMULA, RENAME, DEPRECATE, SLA, SYNONYM, OWNER] }
+        from_version:  { type: string }
+        to_version:    { type: string }
+        diff:          { type: object }
+        impact_summary:{ $ref: '#/components/schemas/ImpactSummary' }
+        status:        { type: string }
+        created_by:    { type: string }
+        created_at:    { type: string, format: date-time }
+        approvals:     { type: array, items: { type: object, properties: { approver:{type:string}, decision:{type:string}, comment:{type:string}, decided_at:{type:string,format:date-time}}}}
+
+    ChangeRequestInput:
+      type: object
+      required: [change_type, payload]
+      properties:
+        metric_code:  { type: string }
+        change_type:  { type: string }
+        payload:      { type: object }
+        change_note:  { type: string }
+
+    Sla:
+      type: object
+      properties:
+        freshness_minutes: { type: integer }
+        availability:      { type: number }
+        query_p95_ms:      { type: integer }
+
+    ImpactSummary:
+      type: object
+      properties:
+        downstream_metrics: { type: array, items: { type: string } }
+        dashboards:         { type: array, items: { type: string } }
+        saved_queries:      { type: array, items: { type: string } }
+        ai_sessions_7d:     { type: integer }
+        billing_rules:      { type: array, items: { type: string } }
+        subscribers_count:  { type: integer }
+        risk_level:         { type: string, enum: [LOW, MEDIUM, HIGH, CRITICAL] }
+        recommended_approvers: { type: array, items: { type: string } }
+
+    Subscription:
+      type: object
+      properties:
+        sub_id:      { type: integer }
+        metric_code: { type: string }
+        notify_on:   { type: array, items: { type: string } }
+        channel:     { type: array, items: { type: string } }
+        created_at:  { type: string, format: date-time }
+
+    QualityEvent:
+      type: object
+      properties:
+        event_id:   { type: integer }
+        metric_code:{ type: string }
+        event_type: { type: string, enum: [FRESHNESS, NULL_RATIO, SPIKE, CONSISTENCY, SLA] }
+        severity:   { type: string }
+        detected_at:{ type: string, format: date-time }
+        detail:     { type: object }
+        resolved_at:{ type: string, format: date-time }
+
+    SandboxRunInput:
+      type: object
+      properties:
+        dimensions: { type: array, items: { type: string } }
+        filters:    { type: array }
+        time:       { type: object }
+        limit:      { type: integer, default: 100, maximum: 1000 }

@@ -1,0 +1,164 @@
+## ============================================================
+## 财务报表三表 指标 (利润表 + 资产负债表 + 现金流量)
+## 多主体: entity_id=0 表示合并报表
+## ============================================================
+version: 1
+domain: finance
+
+metrics:
+  # --- 利润表 ---
+  - name: revenue
+    label: 营业收入
+    code: F001
+    formula: SUM(revenue)
+    table: dws_income_statement_monthly
+    grain: [month, quarter, year]
+    unit: 元
+    applicable: [ALL]
+
+  - name: gross_profit
+    label: 毛利
+    code: F002
+    formula: SUM(gross_profit)
+    table: dws_income_statement_monthly
+    unit: 元
+    applicable: [ALL]
+
+  - name: operating_profit
+    label: 营业利润
+    code: F003
+    formula: SUM(operating_profit)
+    table: dws_income_statement_monthly
+    unit: 元
+
+  - name: net_profit
+    label: 净利润
+    code: F004
+    formula: SUM(net_profit)
+    table: dws_income_statement_monthly
+    unit: 元
+
+  - name: gross_margin_pct
+    label: 毛利率
+    code: F005
+    formula: SUM(gross_profit) / NULLIF(SUM(revenue),0)
+    table: dws_income_statement_monthly
+    unit: 比例
+
+  - name: net_margin_pct
+    label: 净利率
+    code: F006
+    formula: SUM(net_profit) / NULLIF(SUM(revenue),0)
+    table: dws_income_statement_monthly
+    unit: 比例
+
+  - name: ebitda
+    label: EBITDA
+    code: F007
+    formula: SUM(ebitda)
+    table: dws_income_statement_monthly
+    unit: 元
+
+  - name: biz_fee_expense
+    label: 业务费
+    code: F008
+    formula: SUM(biz_fee_expense)
+    table: dws_income_statement_monthly
+    unit: 元
+    requires_flag: ENABLE_BIZ_FEE
+
+  - name: roundoff_expense
+    label: 抹零
+    code: F009
+    formula: SUM(roundoff_expense)
+    table: dws_income_statement_monthly
+    unit: 元
+    requires_flag: ENABLE_ROUNDOFF
+
+  # --- 资产负债表 ---
+  - name: total_assets
+    label: 资产总计
+    code: F020
+    formula: SUM(total_assets)
+    table: dws_balance_sheet_monthly
+    unit: 元
+
+  - name: total_liab
+    label: 负债合计
+    code: F021
+    formula: SUM(total_liab)
+    table: dws_balance_sheet_monthly
+    unit: 元
+
+  - name: total_equity
+    label: 所有者权益
+    code: F022
+    formula: SUM(total_equity)
+    table: dws_balance_sheet_monthly
+    unit: 元
+
+  - name: current_ratio
+    label: 流动比率
+    code: F023
+    formula: AVG(current_ratio)
+    table: dws_balance_sheet_monthly
+    unit: 倍
+
+  - name: quick_ratio
+    label: 速动比率
+    code: F024
+    formula: AVG(quick_ratio)
+    table: dws_balance_sheet_monthly
+    unit: 倍
+
+  - name: debt_to_asset
+    label: 资产负债率
+    code: F025
+    formula: AVG(debt_to_asset)
+    table: dws_balance_sheet_monthly
+    unit: 比例
+
+  - name: ccc_days
+    label: 现金循环天数
+    code: F026
+    description: CCC = 库存周转天 + 应收周转天 - 应付周转天
+    formula: AVG(ccc_days)
+    table: dws_balance_sheet_monthly
+    unit: 天
+
+  # --- 现金流量 ---
+  - name: cf_operating
+    label: 经营活动现金流
+    code: F030
+    formula: SUM(cf_operating)
+    table: dws_cashflow_monthly
+    unit: 元
+
+  - name: cf_net
+    label: 现金净流量
+    code: F031
+    formula: SUM(cf_net)
+    table: dws_cashflow_monthly
+    unit: 元
+
+  # --- 多主体合并 ---
+  - name: intercompany_eliminate_amt
+    label: 关联交易抵消金额
+    code: F040
+    formula: SUM(amount_excl_tax) FILTER (WHERE is_eliminated = 1)
+    table: fact_intercompany_tx_daily
+    unit: 元
+    requires_flag: ENABLE_INTERCOMPANY
+
+action_rules:
+  - id: FIN_DEBT_RATIO_HIGH
+    title: 资产负债率过高
+    severity: HIGH
+    when: debt_to_asset > 0.75
+    advice: "资产负债率 {debt_to_asset:.0%} 已超 75%, 关注短期偿债能力"
+
+  - id: FIN_CURRENT_RATIO_LOW
+    title: 流动比率偏低
+    severity: MEDIUM
+    when: current_ratio < 1.0
+    advice: "流动比率 {current_ratio:.2f}, 短期流动性紧张"

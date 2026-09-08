@@ -1,0 +1,136 @@
+## ============================================================
+## 生产/加工域指标（25 个）
+## domain: PRODUCTION
+## ============================================================
+domain: PRODUCTION
+version: 1
+extends: [_common.yaml, _dimensions.yaml]
+
+metrics:
+
+  - { name: melt_tonnage, label: 出钢量, code: M050,
+      synonyms: [炼钢产量],
+      fact: dws_mill_daily, filter: "process='炼钢'",
+      formula: SUM(output_tonnage), format: ton, applicable: [MILL] }
+
+  - { name: cast_tonnage, label: 连铸坯产量, code: M051,
+      fact: dws_mill_daily, filter: "process='连铸'",
+      formula: SUM(output_tonnage), format: ton, applicable: [MILL] }
+
+  - { name: hot_rolling_tonnage, label: 热轧产量, code: M052,
+      fact: dws_mill_daily, filter: "process='热轧'",
+      formula: SUM(output_tonnage), format: ton, applicable: [MILL] }
+
+  - { name: cold_rolling_tonnage, label: 冷轧产量, code: M053,
+      fact: dws_mill_daily, filter: "process='冷轧'",
+      formula: SUM(output_tonnage), format: ton, applicable: [MILL] }
+
+  - { name: coating_tonnage, label: 镀锌彩涂产量, code: M054,
+      fact: dws_mill_daily,
+      filter: "process IN ('镀锌','彩涂','镀铝锌')",
+      formula: SUM(output_tonnage), format: ton, applicable: [MILL] }
+
+  - { name: processing_tonnage, label: 加工产量, code: M055,
+      synonyms: [剪切量, 开平量, 纵剪量],
+      fact: dws_process_daily,
+      formula: SUM(output_tonnage), format: ton, applicable: [PROCESS, MILL] }
+
+  - { name: wo_count, label: 工单数, code: M056,
+      fact: dws_wo_daily, formula: SUM(wo_count),
+      format: count, applicable: [PROCESS, MILL] }
+
+  - { name: wo_complete_rate, label: 工单完成率, code: M057,
+      fact: dws_wo_daily,
+      formula: "SUM(completed_wo)/NULLIF(SUM(wo_count),0)",
+      format: percent, applicable: [PROCESS, MILL] }
+
+  - { name: wo_overdue_rate, label: 工单逾期率, code: M058,
+      fact: dws_wo_daily,
+      formula: "SUM(overdue_wo)/NULLIF(SUM(wo_count),0)",
+      format: percent, applicable: [PROCESS, MILL] }
+
+  - { name: plan_attainment_rate, label: 计划达成率, code: M059,
+      fact: dws_plan_daily,
+      formula: "SUM(actual_tonnage)/NULLIF(SUM(plan_tonnage),0)",
+      format: percent, applicable: [PROCESS, MILL] }
+
+  - { name: oee, label: OEE, code: M060,
+      synonyms: [设备综合效率],
+      fact: dws_oee_daily,
+      formula: "availability*performance*quality_rate",
+      requires_metrics: [availability, performance, quality_rate],
+      format: percent, applicable: [PROCESS, MILL] }
+
+  - { name: availability, label: 时间开动率, code: M061,
+      fact: dws_oee_daily,
+      formula: "SUM(run_time_sec)/NULLIF(SUM(plan_time_sec),0)",
+      format: percent, applicable: [PROCESS, MILL] }
+
+  - { name: performance, label: 性能开动率, code: M062,
+      fact: dws_oee_daily,
+      formula: "(SUM(total_qty)*AVG(standard_cycle_sec))/NULLIF(SUM(run_time_sec),0)",
+      format: percent, applicable: [PROCESS, MILL] }
+
+  - { name: quality_rate, label: 良品率, code: M063,
+      fact: dws_oee_daily,
+      formula: "SUM(good_qty)/NULLIF(SUM(total_qty),0)",
+      format: percent, applicable: [PROCESS, MILL] }
+
+  - { name: mttr, label: 平均修复时间MTTR, code: M064,
+      fact: dws_equip_daily,
+      formula: "SUM(down_time_sec)/NULLIF(SUM(failure_count),0)/60",
+      format: count, unit: 分钟, applicable: [PROCESS, MILL] }
+
+  - { name: mtbf, label: 平均无故障时间MTBF, code: M065,
+      fact: dws_equip_daily,
+      formula: "SUM(run_time_sec)/NULLIF(SUM(failure_count),0)/3600",
+      format: count, unit: 小时, applicable: [PROCESS, MILL] }
+
+  - { name: equip_failure_count, label: 设备故障次数, code: M066,
+      fact: dws_equip_daily, formula: SUM(failure_count),
+      format: count, applicable: [PROCESS, MILL] }
+
+  - { name: changeover_time_avg, label: 平均换型时间, code: M067,
+      synonyms: [换规格时间],
+      fact: dws_equip_daily,
+      formula: "SUM(changeover_sec)/NULLIF(SUM(changeover_count),0)/60",
+      format: count, unit: 分钟, applicable: [PROCESS, MILL] }
+
+  - { name: yield_rate, label: 工艺成材率, code: M068,
+      synonyms: [成材率],
+      fact: dws_process_daily,
+      formula: "SUM(output_tonnage)/NULLIF(SUM(input_tonnage),0)",
+      format: percent, applicable: [PROCESS, MILL] }
+
+  - { name: burn_loss_rate, label: 烧损率, code: M069,
+      synonyms: [氧化烧损, 加热炉烧损],
+      fact: dws_mill_daily, filter: "process='加热炉'",
+      formula: "1-SUM(output_tonnage)/NULLIF(SUM(input_tonnage),0)",
+      format: percent, applicable: [MILL] }
+
+  - { name: scrap_rate, label: 废品率, code: M070,
+      fact: dws_process_daily,
+      formula: "SUM(scrap_tonnage)/NULLIF(SUM(input_tonnage),0)",
+      format: percent, applicable: [PROCESS, MILL] }
+
+  - { name: rework_rate, label: 返工率, code: M071,
+      fact: dws_process_daily,
+      formula: "SUM(rework_tonnage)/NULLIF(SUM(output_tonnage),0)",
+      format: percent, applicable: [PROCESS, MILL] }
+
+  - { name: energy_per_ton, label: 吨钢综合能耗, code: M072,
+      synonyms: [吨钢电耗, 综合能耗],
+      fact: dws_energy_daily,
+      formula: "SUM(kgce)/NULLIF(SUM(output_tonnage),0)",
+      format: price, unit: kgce/吨, applicable: [MILL] }
+
+  - { name: cost_per_ton, label: 吨钢成本, code: M073,
+      fact: dws_cost_daily,
+      formula: "SUM(total_cost)/NULLIF(SUM(output_tonnage),0)",
+      format: price, sensitivity: HIGH, applicable: [PROCESS, MILL] }
+
+  - { name: material_utilization, label: 材料利用率, code: M074,
+      synonyms: [套料率],
+      fact: dws_process_daily,
+      formula: "SUM(net_used_tonnage)/NULLIF(SUM(input_tonnage),0)",
+      format: percent, applicable: [PROCESS] }

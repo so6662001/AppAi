@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>指标钻取 · 钢铁 AI 经营分析平台</title>
+<link rel="stylesheet" href="./assets/shared.css">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  /* 钻取面包屑 */
+  .breadcrumb-trail {
+    background: #fff; border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 16px; display: flex; align-items: center; gap: 8px;
+    flex-wrap: wrap; margin-bottom: 16px;
+  }
+  .crumb { padding: 4px 10px; background: #f0f5ff; color: var(--primary); border-radius: 4px; font-size: 13px; cursor: pointer; }
+  .crumb.cur { background: var(--primary); color: #fff; font-weight: 500; }
+  .crumb-sep { color: var(--text-3); }
+  .breadcrumb-trail .right { margin-left: auto; display: flex; gap: 8px; }
+
+  /* AI 归因 卡片 */
+  .ai-attr {
+    background: linear-gradient(135deg, #001529 0%, #003a8c 70%, #1677ff 100%);
+    color: #fff; padding: 18px 22px; border-radius: 10px;
+    margin-bottom: 16px;
+    display: flex; gap: 16px;
+  }
+  .ai-attr .av {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: linear-gradient(135deg, #722ed1, #fa8c16);
+    display: grid; place-items: center; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .ai-attr .nm { font-size: 13px; color: #a8c7ff; }
+  .ai-attr .txt { font-size: 14px; line-height: 1.7; margin-top: 4px; }
+  .ai-attr .txt b { color: #ffd591; font-weight: 600; }
+  .ai-attr .footer { margin-top: 10px; display: flex; gap: 8px; align-items: center; }
+
+  /* 推荐钻取路径 */
+  .drill-paths {
+    display: flex; gap: 10px; flex-wrap: wrap;
+  }
+  .path-card {
+    background: #fff; border: 2px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; min-width: 180px; cursor: pointer;
+    transition: all .15s; flex: 1;
+  }
+  .path-card:hover { border-color: var(--primary); transform: translateY(-1px); }
+  .path-card.cur { border-color: var(--primary); background: linear-gradient(135deg, #f0f5ff, #fff); }
+  .path-card .ti { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+  .path-card .ti .num { background: var(--primary); color: #fff; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; font-size: 11px; font-weight: 700; }
+  .path-card .sb { font-size: 12px; color: var(--text-3); margin-top: 6px; }
+  .path-card .viz-icon { float: right; font-size: 16px; opacity: 0.5; }
+
+  /* 维度拆分大表 */
+  .drill-tb td.contrib {
+    position: relative;
+  }
+  .drill-tb td.contrib .bar {
+    position: absolute; left: 0; top: 0; bottom: 0; opacity: 0.15; z-index: 0;
+  }
+  .drill-tb td.contrib .bar.pos { background: var(--success); }
+  .drill-tb td.contrib .bar.neg { background: var(--danger); }
+  .drill-tb td.contrib .v { position: relative; z-index: 1; font-weight: 600; }
+
+  /* 钻取链路状态条 */
+  .drill-status {
+    background: #fafbfc; padding: 12px 16px;
+    border-radius: 6px; display: flex; gap: 24px;
+    border: 1px dashed var(--border);
+  }
+  .drill-status .kv { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--text-2); }
+  .drill-status .kv b { color: var(--text); font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell" data-active="metric-drilldown.html" data-crumbs="经营驾驶舱 <span class=&quot;sep&quot;>/</span> <span class=&quot;cur&quot;>指标钻取 · 销售额</span>"></div>
+
+  <main class="main">
+
+    <div class="page-title">
+      <div>
+        <h1>📊 销售额 · 多维钻取</h1>
+        <div class="desc">指标 code <code>sales_amount</code> · 时间 5/27 当日 · 数据来源 dws_sales_daily</div>
+      </div>
+      <div class="flex gap-12">
+        <select style="width:140px"><option>5/27 当日</option><option>本周</option><option>本月</option></select>
+        <button class="btn">📥 导出</button>
+        <button class="btn primary">💬 转 AI 对话</button>
+      </div>
+    </div>
+
+    <!-- 顶部三大指标卡 -->
+    <div class="row-4 mb-16">
+      <div class="card"><div class="card-b">
+        <div class="kpi"><div class="lbl">销售额 (本期)</div><div class="val">¥1,820<span class="unit">万</span></div></div>
+      </div></div>
+      <div class="card"><div class="card-b">
+        <div class="kpi"><div class="lbl">销售额 (上期)</div><div class="val muted">¥1,620<span class="unit">万</span></div></div>
+      </div></div>
+      <div class="card" style="border-color:#52c41a"><div class="card-b">
+        <div class="kpi"><div class="lbl">环比变化</div><div class="val" style="color:var(--success)">+¥200<span class="unit">万 (+12.3%)</span></div></div>
+      </div></div>
+      <div class="card"><div class="card-b">
+        <div class="kpi"><div class="lbl">销售吨数</div><div class="val">4,820<span class="unit">吨</span></div><div class="sub muted">吨毛利 ¥186</div></div>
+      </div></div>
+    </div>
+
+    <!-- 钻取面包屑 -->
+    <div class="breadcrumb-trail">
+      <span class="muted">🗺 钻取链路:</span>
+      <span class="crumb">总值</span>
+      <span class="crumb-sep">›</span>
+      <span class="crumb cur">按客户</span>
+      <span class="crumb-sep">›</span>
+      <span style="font-style: italic; color: var(--text-3); font-size: 12px;">点下方选第二层</span>
+      <div class="right">
+        <button class="btn sm">← 上一层</button>
+        <button class="btn sm">⏎ 返回总值</button>
+      </div>
+    </div>
+
+    <!-- AI 自动归因 -->
+    <div class="ai-attr">
+      <div class="av">AI</div>
+      <div style="flex: 1;">
+        <div class="nm">智能归因 (auto-attribution) · DeepSeek</div>
+        <div class="txt">
+          销售额 5/27 比 5/26 <b>增长 ¥200 万 (+12.3%)</b>, 主要来自 3 个客户:<br>
+          ① <b>江某机械</b> 贡献 +¥120 万 (60% 增量), 因 SO20260527-088 / 280 吨大单<br>
+          ② <b>南某五金</b> 贡献 +¥48 万 (24% 增量), 新增冷轧合同<br>
+          ③ <b>湖州某加工</b> 贡献 +¥22 万 (11% 增量), 持续追单<br>
+          <br>
+          <b>⚠ 风险提示</b>: 江某机械单客户占比从 6% 升至 19%, <b>集中度风险</b>开始浮现, 建议关注其授信使用率.
+        </div>
+        <div class="footer">
+          <button class="btn primary sm">💬 让 AI 继续分析</button>
+          <button class="btn sm">📋 复制结论</button>
+          <button class="btn sm">👍 准确</button>
+          <button class="btn sm">👎 离谱</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 推荐钻取路径 -->
+    <div class="card mb-16">
+      <div class="card-h">
+        <h3>🎯 推荐继续钻取 · 看看背后是什么</h3>
+        <div class="tools muted">点击下方任一维度, 二级钻取</div>
+      </div>
+      <div class="card-b">
+        <div class="drill-paths">
+          <div class="path-card cur">
+            <span class="viz-icon">📊</span>
+            <div class="ti"><span class="num">1</span>按客户 ✓</div>
+            <div class="sb">Top 10 客户分布 · 当前查看</div>
+          </div>
+          <div class="path-card">
+            <span class="viz-icon">🥧</span>
+            <div class="ti"><span class="num">2</span>按产品类型</div>
+            <div class="sb">热卷/螺纹/冷轧/不锈分布</div>
+          </div>
+          <div class="path-card">
+            <span class="viz-icon">🌳</span>
+            <div class="ti"><span class="num">3</span>按产地</div>
+            <div class="sb">沙钢系/宝武系/河钢系</div>
+          </div>
+          <div class="path-card">
+            <span class="viz-icon">🗺</span>
+            <div class="ti"><span class="num">4</span>按区域</div>
+            <div class="sb">华东/华北/华南</div>
+          </div>
+          <div class="path-card">
+            <span class="viz-icon">👥</span>
+            <div class="ti"><span class="num">5</span>按销售员</div>
+            <div class="sb">15 个销售员业绩分布</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 钻取链路状态 -->
+    <div class="drill-status mb-16">
+      <div class="kv">⏱ 查询耗时 <b>312 ms</b></div>
+      <div class="kv">🗄 数据来源 <b>dws_sales_daily</b></div>
+      <div class="kv">📅 时间窗 <b>5/27 vs 5/26</b></div>
+      <div class="kv">🎯 拆分维度 <b>customer (Top 10)</b></div>
+      <div class="kv">📊 行数 <b>10 / 142</b></div>
+      <div class="kv" style="margin-left:auto">🪙 用了 <b>54 Token</b> (≈ ¥0.05)</div>
+    </div>
+
+    <!-- 主可视化区: 维度拆分图 + 明细表 -->
+    <div class="row mb-16" style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 16px;">
+
+      <div class="card">
+        <div class="card-h">
+          <h3>📊 按客户 Top 10 · 本期 vs 上期</h3>
+        </div>
+        <div class="card-b"><div id="ch_cust" class="chart chart-lg"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-h">
+          <h3>📋 客户维度明细 (按贡献排序)</h3>
+          <div class="tools">
+            <button class="btn sm">客户名</button>
+            <button class="btn sm primary">贡献额</button>
+            <button class="btn sm">环比</button>
+          </div>
+        </div>
+        <div class="card-b no-pad">
+          <table class="tb drill-tb">
+            <thead>
+              <tr>
+                <th>排名</th><th>客户</th>
+                <th class="num">本期 (万)</th>
+                <th class="num">上期 (万)</th>
+                <th class="num">环比</th>
+                <th class="num">贡献增量</th>
+                <th>钻取</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1</td><td>江某机械</td>
+                <td class="num">¥348</td>
+                <td class="num">¥228</td>
+                <td class="num up">+52.6%</td>
+                <td class="contrib"><span class="bar pos" style="width:60%"></span><span class="v" style="color:var(--success)">+¥120</span></td>
+                <td><a>→</a></td>
+              </tr>
+              <tr>
+                <td>2</td><td>南某五金</td>
+                <td class="num">¥246</td>
+                <td class="num">¥198</td>
+                <td class="num up">+24.2%</td>
+                <td class="contrib"><span class="bar pos" style="width:24%"></span><span class="v" style="color:var(--success)">+¥48</span></td>
+                <td><a>→</a></td>
+              </tr>
+              <tr>
+                <td>3</td><td>湖州某加工</td>
+                <td class="num">¥182</td>
+                <td class="num">¥160</td>
+                <td class="num up">+13.8%</td>
+                <td class="contrib"><span class="bar pos" style="width:11%"></span><span class="v" style="color:var(--success)">+¥22</span></td>
+                <td><a>→</a></td>
+              </tr>
+              <tr>
+                <td>4</td><td>苏州某制品</td>
+                <td class="num">¥168</td>
+                <td class="num">¥155</td>
+                <td class="num up">+8.4%</td>
+                <td class="contrib"><span class="bar pos" style="width:6.5%"></span><span class="v" style="color:var(--success)">+¥13</span></td>
+                <td><a>→</a></td>
+              </tr>
+              <tr>
+                <td>5</td><td>无某建工</td>
+                <td class="num">¥142</td>
+                <td class="num">¥138</td>
+                <td class="num up">+2.9%</td>
+                <td class="contrib"><span class="bar pos" style="width:2%"></span><span class="v" style="color:var(--success)">+¥4</span></td>
+                <td><a>→</a></td>
+              </tr>
+              <tr>
+                <td>6</td><td>常州某重型</td>
+                <td class="num">¥138</td>
+                <td class="num">¥142</td>
+                <td class="num down">-2.8%</td>
+                <td class="contrib"><span class="bar neg" style="width:2%"></span><span class="v" style="color:var(--danger)">-¥4</span></td>
+                <td><a>→</a></td>
+              </tr>
+              <tr>
+                <td>7</td><td>张家港某物流</td>
+                <td class="num">¥120</td>
+                <td class="num">¥138</td>
+                <td class="num down">-13.0%</td>
+                <td class="contrib"><span class="bar neg" style="width:9%"></span><span class="v" style="color:var(--danger)">-¥18</span></td>
+                <td><a>→</a></td>
+              </tr>
+              <tr>
+                <td>8</td><td>浙江某重工</td>
+                <td class="num">¥98</td>
+                <td class="num">¥115</td>
+                <td class="num down">-14.8%</td>
+                <td class="contrib"><span class="bar neg" style="width:8.5%"></span><span class="v" style="color:var(--danger)">-¥17</span></td>
+                <td><a>→</a></td>
+              </tr>
+              <tr style="background:#fafbfc">
+                <td colspan="2"><b>其他 132 个</b></td>
+                <td class="num">¥378</td>
+                <td class="num">¥346</td>
+                <td class="num up">+9.2%</td>
+                <td class="contrib"><span class="bar pos" style="width:16%"></span><span class="v" style="color:var(--success)">+¥32</span></td>
+                <td>-</td>
+              </tr>
+              <tr style="background:#001529; color:#fff; font-weight:600;">
+                <td colspan="2">合计</td>
+                <td class="num">¥1,820</td>
+                <td class="num">¥1,620</td>
+                <td class="num">+12.3%</td>
+                <td class="contrib"><span class="v">+¥200</span></td>
+                <td>-</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 第三层钻取入口 (单客户钻取到订单) -->
+    <div class="card">
+      <div class="card-h">
+        <h3>🔬 第三层钻取 · 江某机械的订单明细 (点贡献最大的客户即可看)</h3>
+        <div class="tools"><span class="tag info">3 级钻取</span></div>
+      </div>
+      <div class="card-b no-pad">
+        <table class="tb">
+          <thead>
+            <tr>
+              <th>订单号</th><th>日期</th><th>销售员</th>
+              <th>产品</th><th>产地</th>
+              <th class="num">吨数</th><th class="num">金额</th>
+              <th class="num">吨毛利</th><th>销售方式</th><th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>SO20260527-088</td><td>5/27</td><td>林某</td>
+              <td>HC2500</td><td>沙钢</td>
+              <td class="num">280</td><td class="num bold">¥117.6 万</td>
+              <td class="num up">¥232</td><td><span class="tag success">直销·现款</span></td>
+              <td><a>查看</a></td>
+            </tr>
+            <tr>
+              <td>SO20260527-076</td><td>5/27</td><td>林某</td>
+              <td>HC2500</td><td>沙钢</td>
+              <td class="num">160</td><td class="num bold">¥67.2 万</td>
+              <td class="num up">¥218</td><td><span class="tag success">直销·T+30</span></td>
+              <td><a>查看</a></td>
+            </tr>
+            <tr>
+              <td>SO20260527-062</td><td>5/27</td><td>王某</td>
+              <td>CR板</td><td>沙钢</td>
+              <td class="num">95</td><td class="num">¥38.4 万</td>
+              <td class="num">¥186</td><td><span class="tag">直销·T+30</span></td>
+              <td><a>查看</a></td>
+            </tr>
+            <tr>
+              <td>SO20260527-049</td><td>5/27</td><td>陈某</td>
+              <td>HC2500</td><td>永钢</td>
+              <td class="num">68</td><td class="num">¥28.4 万</td>
+              <td class="num">¥168</td><td><span class="tag">直销·T+30</span></td>
+              <td><a>查看</a></td>
+            </tr>
+            <tr>
+              <td>SO20260527-031</td><td>5/27</td><td>赵某</td>
+              <td>GI板</td><td>宝钢</td>
+              <td class="num">48</td><td class="num">¥24.0 万</td>
+              <td class="num up">¥256</td><td><span class="tag success">直销·现款</span></td>
+              <td><a>查看</a></td>
+            </tr>
+            <tr>
+              <td>SO20260527-018</td><td>5/27</td><td>李某</td>
+              <td>RB螺纹</td><td>沙钢</td>
+              <td class="num">38</td><td class="num">¥15.2 万</td>
+              <td class="num">¥158</td><td><span class="tag warning">间销</span></td>
+              <td><a>查看</a></td>
+            </tr>
+            <tr style="background:#fafbfc">
+              <td><b>5/27 江某机械 6 单合计</b></td>
+              <td colspan="4">直销 5 单, 间销 1 单</td>
+              <td class="num bold">689</td>
+              <td class="num bold">¥290.8 万</td>
+              <td class="num bold up">¥204 (高于均值)</td>
+              <td colspan="2">-</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 底部 AI 行动建议 -->
+    <div class="card mt-16">
+      <div class="card-h">
+        <h3>🚀 基于本次钻取的 AI 行动建议</h3>
+        <div class="tools muted">综合归因 + 业务规则给出</div>
+      </div>
+      <div class="card-b">
+        <div class="row-3">
+          <div style="background: #f6ffed; padding: 14px; border-radius: 8px; border-left: 4px solid var(--success);">
+            <div class="bold">✅ 维护江某机械关系</div>
+            <div class="muted" style="font-size:12px; margin-top: 6px;">本周连续追加 280 吨, 是关键客户, 建议优先排产 + 锁价对冲</div>
+            <button class="btn primary sm mt-8">通知 销售总监</button>
+          </div>
+          <div style="background: #fff7e6; padding: 14px; border-radius: 8px; border-left: 4px solid var(--warning);">
+            <div class="bold">⚠ 复查张家港某物流</div>
+            <div class="muted" style="font-size:12px; margin-top: 6px;">环比下滑 13%, 连续 2 周走低, 询问客户经理原因</div>
+            <button class="btn sm mt-8">指派客户经理</button>
+          </div>
+          <div style="background: #fff1f0; padding: 14px; border-radius: 8px; border-left: 4px solid var(--danger);">
+            <div class="bold">🛑 警惕集中度风险</div>
+            <div class="muted" style="font-size:12px; margin-top: 6px;">江某机械单客户占比从 6% 升至 19%, 检查授信使用率 (98.6%)</div>
+            <button class="btn danger sm mt-8">查看授信详情</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="./assets/layout.js"></script>
+<script>
+  // 客户 Top10 双柱
+  echarts.init(document.getElementById('ch_cust')).setOption({
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    legend: { top: 4 },
+    grid: { left: 90, right: 30, top: 40, bottom: 30 },
+    xAxis: { type: 'value', axisLabel: { formatter: '¥{value}万' } },
+    yAxis: { type: 'category', data: ['浙江某重工','张家港物流','常州某重型','无某建工','苏州某制品','湖州某加工','南某五金','江某机械'].reverse() },
+    series: [
+      { name:'上期', type:'bar', data: [115,138,142,138,155,160,198,228].reverse(),
+        itemStyle:{color:'#bfbfbf'}, barWidth: 14 },
+      { name:'本期', type:'bar', data: [98,120,138,142,168,182,246,348].reverse(),
+        itemStyle:{color:'#1677ff'}, barWidth: 14,
+        label:{show:true, position:'right', formatter:'¥{c}万', fontSize:11} },
+    ],
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,371 @@
+# =====================================================================
+# Docker Compose · 开发/演示环境一键启动
+# 适用: 本地走查 UI + 跑通 DSL 编译器 + Lua 测试
+# 不包含: 业务系统 / Java 后端 / SeaTunnel (这些后续单独跑)
+# 启动: docker compose -f docker-compose.dev.yml up -d
+# =====================================================================
+version: '3.8'
+
+services:
+
+  # ----------------------- 数据库 -----------------------
+  starrocks:
+    image: starrocks/allin1-ubuntu:3.2-latest
+    container_name: steel-starrocks
+    ports:
+      - "9030:9030"   # MySQL 协议
+      - "8030:8030"   # FE HTTP
+      - "8040:8040"   # BE HTTP
+    environment:
+      - HOST_TYPE=FQDN
+    healthcheck:
+      test: ["CMD-SHELL", "mysql -h127.0.0.1 -P9030 -uroot -e 'SHOW DATABASES;' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - sr_data:/data
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.0
+    container_name: steel-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: steeldev
+      MYSQL_DATABASE: steel_app
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./ddl/07_governance.sql:/docker-entrypoint-initdb.d/07_governance.sql:ro
+      - ./ddl/08_billing.sql:/docker-entrypoint-initdb.d/08_billing.sql:ro
+      - ./ddl/09_chat_session.sql:/docker-entrypoint-initdb.d/09_chat_session.sql:ro
+      - ./ddl/11_briefing.sql:/docker-entrypoint-initdb.d/11_briefing.sql:ro
+      - ./ddl/12_scheduled_reports.sql:/docker-entrypoint-initdb.d/12_scheduled_reports.sql:ro
+      - ./ddl/13_tenant_notify_config.sql:/docker-entrypoint-initdb.d/13_tenant_notify_config.sql:ro
+      - ./ddl/14_rbac.sql:/docker-entrypoint-initdb.d/14_rbac.sql:ro
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: steel-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # ----------------------- 计费服务 (Java + Lua) -----------------------
+  billing-service:
+    build:
+      context: ./services/billing-service
+    container_name: steel-billing-service
+    ports:
+      - "8081:8081"
+    environment:
+      - DB_URL=jdbc:mysql://mysql:3306/steel_billing?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8mb4
+      - DB_USER=root
+      - DB_PASS=steeldev
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - LUA_DIR=/app/billing-lua
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./services/billing-lua:/app/billing-lua:ro
+    depends_on:
+      mysql: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
+
+  # ----------------------- AI 编排 (Python) -----------------------
+  chat-orchestrator:
+    build:
+      context: ./services/chat-orchestrator
+    container_name: steel-chat-orchestrator
+    ports:
+      - "8200:8200"
+    environment:
+      - METRICS_DIR=/app/metrics
+      - DSL_COMPILER_URL=http://dsl-compiler:8000
+      - BILLING_URL=http://billing-service:8081/api/v1
+      - SR_JDBC_URL=jdbc:mysql://starrocks:9030/steel_dw
+      - SR_USER=root
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./metrics:/app/metrics:ro
+    depends_on:
+      dsl-compiler: { condition: service_started }
+    restart: unless-stopped
+
+  # ----------------------- 风控告警 (Python) -----------------------
+  risk-alert-service:
+    build:
+      context: ./services/risk-alert-service
+    container_name: steel-risk-alert
+    ports:
+      - "8300:8300"
+    environment:
+      - DB_URL=mysql+pymysql://root:steeldev@mysql:3306/steel_chat?charset=utf8mb4
+      - METRICS_DIR=/app/metrics
+      - DSL_COMPILER_URL=http://dsl-compiler:8000
+      - REDIS_HOST=redis
+      - SCAN_INTERVAL=3600
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./metrics:/app/metrics:ro
+    depends_on:
+      mysql: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
+
+  # ----------------------- API Gateway (Java) -----------------------
+  gateway:
+    build: ./services/gateway
+    container_name: steel-gateway
+    ports: ["8000:8000"]
+    environment:
+      - DSL_COMPILER_URL=http://dsl-compiler:8000
+      - CHAT_URL=http://chat-orchestrator:8200
+      - BRIEFING_URL=http://briefing-service:8500
+      - REPORT_URL=http://report-service:8080
+      - BILLING_URL=http://billing-service:8081
+      - PAYMENT_URL=http://payment-service:8082
+      - REGISTRY_URL=http://metric-registry-service:8090
+      - JWT_SECRET=${JWT_SECRET:-change-me-to-a-strong-secret-at-least-32-bytes-long}
+    restart: unless-stopped
+
+  # ----------------------- 支付 (Java) -----------------------
+  payment-service:
+    build: ./services/payment-service
+    container_name: steel-payment
+    ports: ["8082:8082"]
+    environment:
+      - DB_URL=jdbc:mysql://mysql:3306/steel_billing?useSSL=false&serverTimezone=Asia/Shanghai
+    depends_on: { mysql: { condition: service_healthy } }
+    restart: unless-stopped
+
+  # ----------------------- 指标注册中心后端 (Java) -----------------------
+  metric-registry-service:
+    build: ./services/metric-registry-service
+    container_name: steel-metric-registry
+    ports: ["8090:8090"]
+    environment:
+      - DB_URL=jdbc:mysql://mysql:3306/steel_governance?useSSL=false&serverTimezone=Asia/Shanghai
+    depends_on: { mysql: { condition: service_healthy } }
+    restart: unless-stopped
+
+  # ----------------------- AI 早报后端 (Python) -----------------------
+  briefing-service:
+    build: ./services/briefing-service
+    container_name: steel-briefing
+    ports: ["8500:8500"]
+    environment:
+      - DB_URL=mysql+pymysql://root:steeldev@mysql:3306/steel_chat?charset=utf8mb4
+      - TZ=Asia/Shanghai
+    depends_on: { mysql: { condition: service_healthy } }
+    restart: unless-stopped
+
+  # ----------------------- 建议引擎 (Python) -----------------------
+  advice-engine:
+    build: ./services/advice-engine
+    container_name: steel-advice
+    ports: ["8600:8600"]
+    environment:
+      - DB_URL=mysql+pymysql://root:steeldev@mysql:3306/steel_chat?charset=utf8mb4
+      - METRICS_DIR=/app/metrics
+    volumes:
+      - ./metrics:/app/metrics:ro
+    depends_on: { mysql: { condition: service_healthy } }
+    restart: unless-stopped
+
+  # ----------------------- ETL Runner (Python) -----------------------
+  etl-runner:
+    build: ./services/etl-runner
+    container_name: steel-etl-runner
+    ports: ["8700:8700"]
+    environment:
+      - SR_HOST=starrocks
+    depends_on: { starrocks: { condition: service_healthy } }
+    restart: unless-stopped
+
+  # ----------------------- 查询引擎 (Python) -----------------------
+  query-engine:
+    build: ./services/query-engine
+    container_name: steel-query-engine
+    ports: ["8800:8800"]
+    environment:
+      - SR_HOST=starrocks
+      - REDIS_HOST=redis
+    depends_on:
+      starrocks: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
+
+  # ----------------------- 数据质量监控 (Python) -----------------------
+  data-quality-monitor:
+    build: ./services/data-quality-monitor
+    container_name: steel-dq
+    ports: ["8900:8900"]
+    restart: unless-stopped
+
+  # ----------------------- RAG + 多模型路由 (Python) -----------------------
+  rag-service:
+    build: ./services/rag-service
+    container_name: steel-rag
+    ports: ["8950:8950"]
+    volumes:
+      - ./metrics:/app/metrics:ro
+    environment:
+      - METRICS_DIR=/app/metrics
+    restart: unless-stopped
+
+  # ----------------------- 提成引擎 (Python) -----------------------
+  commission-service:
+    build: ./services/commission-service
+    container_name: steel-commission
+    ports:
+      - "8960:8950"     # 暴露 8960 避免和 rag-service 冲突
+    environment:
+      - DB_URL_GOV=mysql+pymysql://root:steeldev@mysql:3306/steel_governance?charset=utf8mb4
+      - TZ=Asia/Shanghai
+    depends_on: [mysql]
+    restart: unless-stopped
+
+  # ----------------------- 岗位智能画像 (Python) -----------------------
+  role-insight-service:
+    build: ./services/role-insight-service
+    container_name: steel-role-insight
+    ports:
+      - "8970:8970"
+    volumes:
+      - ./role_insights:/opt/role_insights:ro
+    environment:
+      - ROLE_INSIGHTS_DIR=/opt/role_insights
+      - TZ=Asia/Shanghai
+    restart: unless-stopped
+
+  # ----------------------- ERP 客户端防 RPA 服务端 (Python) -----------------------
+  client-guard-service:
+    build: ./services/client-guard-service
+    container_name: steel-client-guard
+    ports:
+      - "8980:8980"
+    environment:
+      - DB_URL_GOV=mysql+pymysql://root:steeldev@mysql:3306/steel_governance?charset=utf8mb4
+      - GUARD_APPROVAL_SECRET=${GUARD_APPROVAL_SECRET:-dev-guard-secret-change-me}
+      - TZ=Asia/Shanghai
+    depends_on: [mysql]
+    restart: unless-stopped
+
+  # ----------------------- 预测 (Python) -----------------------
+  forecast-service:
+    build:
+      context: ./services/forecast-service
+    container_name: steel-forecast
+    ports:
+      - "8400:8400"
+    environment:
+      - SR_JDBC_URL=jdbc:mysql://starrocks:9030/steel_dw
+      - SR_USER=root
+      - USE_PROPHET=false
+      - TZ=Asia/Shanghai
+    restart: unless-stopped
+
+  # ----------------------- 报表 CRUD API (Java) -----------------------
+  report-service:
+    build:
+      context: ./services/report-service
+    container_name: steel-report-service
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_URL=jdbc:mysql://mysql:3306/steel_chat?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8mb4
+      - DB_USER=root
+      - DB_PASS=steeldev
+      - SCHEDULER_URL=http://report-scheduler:8100
+      - TZ=Asia/Shanghai
+    depends_on:
+      mysql: { condition: service_healthy }
+    restart: unless-stopped
+
+  # ----------------------- 报表调度器 -----------------------
+  report-scheduler:
+    build:
+      context: ./services/report-scheduler
+    container_name: steel-report-scheduler
+    ports:
+      - "8100:8100"
+    environment:
+      - DB_URL=mysql+pymysql://root:steeldev@mysql:3306/steel_chat?charset=utf8mb4
+      - DSL_COMPILER_URL=http://dsl-compiler:8000
+      - SR_JDBC_URL=jdbc:mysql://starrocks:9030/steel_dw
+      - SR_USER=root
+      - SR_PASS=
+      - TZ=Asia/Shanghai
+    depends_on:
+      mysql: { condition: service_healthy }
+      starrocks: { condition: service_healthy }
+    restart: unless-stopped
+
+  # ----------------------- DSL 编译器 -----------------------
+  dsl-compiler:
+    build:
+      context: ./services/dsl-compiler
+    container_name: steel-dsl-compiler
+    ports:
+      - "8000:8000"
+    environment:
+      - METRICS_DIR=/app/metrics
+    volumes:
+      - ./metrics:/app/metrics:ro
+    depends_on:
+      starrocks:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ----------------------- 指标注册中心前端 -----------------------
+  registry-web:
+    image: node:20-alpine
+    container_name: steel-registry-web
+    working_dir: /app
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./apps/registry-web:/app
+      - registry_node_modules:/app/node_modules
+    environment:
+      - VITE_API_BASE=http://localhost:8080/api/registry/v1
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    restart: unless-stopped
+
+  # ----------------------- uniapp 早报 H5 -----------------------
+  briefing-h5:
+    image: node:20-alpine
+    container_name: steel-briefing-h5
+    working_dir: /app
+    ports:
+      - "5174:5174"
+    volumes:
+      - ./apps/uniapp-briefing:/app
+      - briefing_node_modules:/app/node_modules
+    environment:
+      - VITE_API_BASE=http://localhost:8080/v1
+    command: sh -c "npm install && npm run dev:h5 -- --host 0.0.0.0 --port 5174"
+    restart: unless-stopped
+
+volumes:
+  sr_data:
+  mysql_data:
+  redis_data:
+  registry_node_modules:
+  briefing_node_modules:

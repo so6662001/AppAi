@@ -1,0 +1,39 @@
+pack_id: PK_PROCESS_PRODUCTION_MGR
+name: 生产经理包-加工
+business_line: PROCESS
+role_code: PRODUCTION_MGR
+
+metrics:
+  - processing_tonnage
+  - wo_count
+  - wo_complete_rate
+  - wo_overdue_rate
+  - plan_attainment_rate
+  - oee
+  - availability
+  - performance
+  - quality_rate
+  - yield_rate
+  - scrap_rate
+  - rework_rate
+  - material_utilization
+  - mttr
+  - mtbf
+  - equip_failure_count
+  - changeover_time_avg
+
+summary_kpis: [processing_tonnage, oee, wo_overdue_rate, quality_rate]
+briefing_cards: [SUMMARY, INSIGHT, ANOMALY]
+recommended_questions:
+  - 今日产线 OEE
+  - 工单完成率
+  - 计划达成率
+  - 哪些工单逾期
+  - 良品率走势
+  - 设备故障次数
+  - 换型平均时间
+  - 套料率
+  - 废品率最高的工序
+  - 返工率
+default_subscriptions: [TPL_PRODUCTION_DAILY]
+default_dashboard: /pages/dashboard/production

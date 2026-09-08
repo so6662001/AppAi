@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>提成方案配置 · 钢铁 AI 经营分析平台</title>
+<link rel="stylesheet" href="./assets/shared.css">
+<style>
+  .scheme-card {
+    border: 2px solid var(--border); border-radius: 8px; padding: 16px; cursor: pointer;
+    position: relative; transition: all .15s;
+  }
+  .scheme-card:hover { border-color: var(--primary); }
+  .scheme-card.sel { border-color: var(--primary); background: linear-gradient(135deg, #f0f5ff, #fff); }
+  .scheme-card .ti { font-weight: 600; font-size: 14px; }
+  .scheme-card .ti .ico { font-size: 18px; margin-right: 6px; }
+  .scheme-card .meta { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+  .scheme-card .stats { display: flex; gap: 12px; margin-top: 10px; font-size: 12px; }
+  .scheme-card .stats span b { display: block; font-size: 14px; color: var(--text); }
+
+  .rule-row {
+    background: #fff; border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px 12px; margin-bottom: 8px;
+    display: grid; grid-template-columns: 40px 1fr 110px 100px 60px; gap: 8px;
+    align-items: center;
+  }
+  .rule-row:hover { border-color: var(--primary); background: #fafdff; }
+  .rule-row.disabled { opacity: .5; background: #fafbfc; }
+  .rule-row .pri { background: var(--primary); color: #fff; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 600; text-align: center; }
+  .rule-row .conds { display: flex; gap: 4px; flex-wrap: wrap; }
+  .rule-row .conds .c { background: #f4f6fa; padding: 2px 8px; border-radius: 4px; font-size: 11px; color: var(--text-2); border: 1px solid var(--border); }
+  .rule-row .conds .c b { color: var(--primary); }
+  .rule-row .rt { font-weight: 700; color: var(--success); text-align: right; }
+  .rule-row .rt small { color: var(--text-3); font-weight: normal; }
+
+  .flag-row { display: grid; grid-template-columns: 1fr 60px 80px; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .flag-row:last-child { border-bottom: 0; }
+  .flag-row .lbl { font-size: 13px; }
+  .flag-row .lbl small { display: block; color: var(--text-3); font-size: 11px; margin-top: 2px; }
+
+  /* switch */
+  .switch { position: relative; display: inline-block; width: 36px; height: 20px; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .slider { position: absolute; cursor: pointer; inset: 0; background: #d9d9d9; border-radius: 20px; transition: .2s; }
+  .switch .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; top: 2px; background: #fff; border-radius: 50%; transition: .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+  .switch input:checked + .slider { background: var(--primary); }
+  .switch input:checked + .slider:before { transform: translateX(16px); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell" data-active="commission-config.html" data-crumbs="人与提成 <span class=&quot;sep&quot;>/</span> <span class=&quot;cur&quot;>提成方案配置</span>" data-user="陈某" data-role="销售总监"></div>
+
+  <main class="main">
+
+    <div class="page-title">
+      <div>
+        <h1>提成方案配置</h1>
+        <div class="desc">租户级可配置 · 4 套内置真实数字模板 · 8 维度规则匹配</div>
+      </div>
+      <div class="flex gap-12">
+        <button class="btn">📋 从模板导入</button>
+        <button class="btn">⏰ 模拟试算</button>
+        <button class="btn primary">＋ 新建方案</button>
+      </div>
+    </div>
+
+    <!-- 4 套方案选择 -->
+    <div class="row-4 mb-16">
+
+      <div class="scheme-card sel">
+        <div class="ti"><span class="ico">📦</span>钢贸现货</div>
+        <div class="meta">TPL_TRADE_GP30 · 当前生效</div>
+        <div style="margin-top:8px; font-size:12px; color: var(--text-2);">挂牌毛利 30% (利润型 35%)</div>
+        <div class="stats">
+          <span><b>4</b>规则</span>
+          <span><b>32</b>销售员</span>
+          <span><b>¥3,000</b>保底</span>
+        </div>
+        <span class="tag success" style="position:absolute;top:14px;right:14px">已生效</span>
+      </div>
+
+      <div class="scheme-card">
+        <div class="ti"><span class="ico">⚙️</span>加工厂</div>
+        <div class="meta">TPL_PROCESS_FEE15</div>
+        <div style="margin-top:8px; font-size:12px; color: var(--text-2);">加工费 15% + 钢材毛利 25%</div>
+        <div class="stats">
+          <span><b>2</b>规则</span>
+          <span><b>14</b>销售员</span>
+          <span><b>¥3,500</b>保底</span>
+        </div>
+        <span class="tag" style="position:absolute;top:14px;right:14px">生效</span>
+      </div>
+
+      <div class="scheme-card">
+        <div class="ti"><span class="ico">🏭</span>钢厂自销</div>
+        <div class="meta">TPL_MILL_TONNAGE</div>
+        <div style="margin-top:8px; font-size:12px; color: var(--text-2);">50 元/吨 · 不分客群</div>
+        <div class="stats">
+          <span><b>1</b>规则</span>
+          <span><b>8</b>销售员</span>
+          <span><b>¥5,000</b>保底</span>
+        </div>
+        <span class="tag muted" style="position:absolute;top:14px;right:14px">未启用</span>
+      </div>
+
+      <div class="scheme-card">
+        <div class="ti"><span class="ico">🌐</span>皮包/纯撮合</div>
+        <div class="meta">TPL_SHELL_SPREAD</div>
+        <div style="margin-top:8px; font-size:12px; color: var(--text-2);">撮合差价 50% · 转单 20%</div>
+        <div class="stats">
+          <span><b>2</b>规则</span>
+          <span><b>0</b>销售员</span>
+          <span><b>¥1,500</b>保底</span>
+        </div>
+        <span class="tag muted" style="position:absolute;top:14px;right:14px">未启用</span>
+      </div>
+
+    </div>
+
+    <!-- 方案详情 (左侧基础配置 + 右侧 Feature Flag) -->
+    <div class="row mb-16" style="display:grid;grid-template-columns: 2fr 1fr; gap: 16px">
+
+      <div class="card">
+        <div class="card-h">
+          <h3>📋 钢贸现货 · 基础配置</h3>
+          <div class="tools">
+            <span class="tag success">v1.4 已生效</span>
+            <span class="tag muted">2024-01-01 起</span>
+          </div>
+        </div>
+        <div class="card-b">
+          <div class="form-row">
+            <div class="lbl">方案名称</div>
+            <div class="ctl"><input type="text" value="【模板】钢贸-按挂牌毛利30%"></div>
+          </div>
+          <div class="form-row">
+            <div class="lbl">业务线</div>
+            <div class="ctl">
+              <div class="btn-grp">
+                <button class="btn sm primary">钢贸 TRADE</button>
+                <button class="btn sm">加工 PROCESS</button>
+                <button class="btn sm">钢厂 MILL</button>
+                <button class="btn sm">皮包 SHELL</button>
+              </div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="lbl">提成基数</div>
+            <div class="ctl">
+              <select>
+                <option selected>挂牌毛利 (LISTED_GROSS_PROFIT) ← 钢贸常用</option>
+                <option>吨毛利 (TON_GROSS_PROFIT)</option>
+                <option>净利 (NET_PROFIT, 扣完资金成本后)</option>
+                <option>加工费收入 (PROCESSING_FEE)</option>
+                <option>销售额 (REVENUE)</option>
+                <option>撮合差价 (SPREAD)</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="lbl">默认系数</div>
+            <div class="ctl flex gap-8">
+              <input type="number" value="30" style="width:80px"> %
+              <span class="muted">· 当规则未命中时使用</span>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="lbl">资金成本率</div>
+            <div class="ctl">
+              <div class="row-3">
+                <div>
+                  <small class="muted">应收占款 (每天)</small>
+                  <input type="text" value="0.0125%">
+                </div>
+                <div>
+                  <small class="muted">库存占款 (每天)</small>
+                  <input type="text" value="0.0150%">
+                </div>
+                <div>
+                  <small class="muted">预付占款 (每天)</small>
+                  <input type="text" value="0.0125%">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="lbl">保底 / 封顶</div>
+            <div class="ctl flex gap-8">
+              <input type="number" value="3000" style="width:120px"> 元/月
+              <span class="muted">~</span>
+              <input type="text" placeholder="无封顶" style="width:120px">
+              <span class="muted">元/月</span>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="lbl">季度奖金</div>
+            <div class="ctl flex gap-8">
+              <input type="number" value="0" style="width:80px"> %
+              <span class="muted">达标毛利 = </span>
+              <input type="text" placeholder="100万" style="width:120px">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h">
+          <h3>🎚 启用项 (Feature)</h3>
+          <div class="tools muted">关闭=该项系数 1.0</div>
+        </div>
+        <div class="card-b" style="padding:0 16px">
+          <div class="flag-row">
+            <div class="lbl">扣应收占款利息<small>开启后扣减客户应收资金成本</small></div>
+            <span class="tag success">推荐</span>
+            <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+          </div>
+          <div class="flag-row">
+            <div class="lbl">扣库存占款利息<small>开启后扣减个人库存资金成本</small></div>
+            <span class="tag success">推荐</span>
+            <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+          </div>
+          <div class="flag-row">
+            <div class="lbl">扣预付款利息<small>开启后扣减预付上游资金成本</small></div>
+            <span class="tag"></span>
+            <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+          </div>
+          <div class="flag-row">
+            <div class="lbl">客群差异化系数<small>利润型 1.2 / 走量型 0.8 / 战略 1.0</small></div>
+            <span class="tag success">推荐</span>
+            <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+          </div>
+          <div class="flag-row">
+            <div class="lbl">直销/间销系数<small>直销 1.0 / 间销 0.5 / 转单 0.3</small></div>
+            <span class="tag success">推荐</span>
+            <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+          </div>
+          <div class="flag-row">
+            <div class="lbl">业务费扣减<small>从提成基数中扣除业务费</small></div>
+            <span class="tag warning">敏感</span>
+            <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+          </div>
+          <div class="flag-row">
+            <div class="lbl">抹零扣减<small>从提成基数中扣除整单抹零</small></div>
+            <span class="tag warning">敏感</span>
+            <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 规则明细 -->
+    <div class="card">
+      <div class="card-h">
+        <h3>🎯 规则明细 · 按优先级匹配 (短路第一条)</h3>
+        <div class="tools">
+          <button class="btn sm">📋 复制规则</button>
+          <button class="btn sm primary">＋ 新增规则</button>
+        </div>
+      </div>
+      <div class="card-b">
+
+        <div class="rule-row">
+          <div class="pri">P10</div>
+          <div>
+            <div class="bold">直销+现款+利润型 <span class="muted" style="font-weight: 400;">→ 利润型客户超优待</span></div>
+            <div class="conds mt-8">
+              <span class="c">销售: <b>直销</b></span>
+              <span class="c">结算: <b>现款</b></span>
+              <span class="c">客群: <b>利润型</b></span>
+              <span class="c muted">产品: 任意</span>
+              <span class="c muted">产地: 任意</span>
+              <span class="c muted">毛利: ≥ 0</span>
+            </div>
+          </div>
+          <div class="rt">35%<small> · PCT</small></div>
+          <div><span class="tag success">启用</span></div>
+          <div class="flex gap-8"><button class="btn ghost sm">编辑</button><button class="btn ghost sm">删除</button></div>
+        </div>
+
+        <div class="rule-row">
+          <div class="pri">P20</div>
+          <div>
+            <div class="bold">直销+T+30+利润型</div>
+            <div class="conds mt-8">
+              <span class="c">销售: <b>直销</b></span>
+              <span class="c">结算: <b>T+30</b></span>
+              <span class="c">客群: <b>利润型</b></span>
+              <span class="c muted">产品: 任意</span>
+            </div>
+          </div>
+          <div class="rt">32%<small> · PCT</small></div>
+          <div><span class="tag success">启用</span></div>
+          <div class="flex gap-8"><button class="btn ghost sm">编辑</button><button class="btn ghost sm">删除</button></div>
+        </div>
+
+        <div class="rule-row">
+          <div class="pri">P30</div>
+          <div>
+            <div class="bold">直销+走量型</div>
+            <div class="conds mt-8">
+              <span class="c">销售: <b>直销</b></span>
+              <span class="c muted">结算: 任意</span>
+              <span class="c">客群: <b>走量型</b></span>
+            </div>
+          </div>
+          <div class="rt">25%<small> · PCT</small></div>
+          <div><span class="tag success">启用</span></div>
+          <div class="flex gap-8"><button class="btn ghost sm">编辑</button><button class="btn ghost sm">删除</button></div>
+        </div>
+
+        <div class="rule-row">
+          <div class="pri">P40</div>
+          <div>
+            <div class="bold">间销/转单</div>
+            <div class="conds mt-8">
+              <span class="c">销售: <b>间销 OR 转单</b></span>
+              <span class="c muted">客群: 任意</span>
+            </div>
+          </div>
+          <div class="rt">15%<small> · PCT</small></div>
+          <div><span class="tag success">启用</span></div>
+          <div class="flex gap-8"><button class="btn ghost sm">编辑</button><button class="btn ghost sm">删除</button></div>
+        </div>
+
+        <div class="rule-row disabled">
+          <div class="pri" style="background:#999">P50</div>
+          <div>
+            <div class="bold">沙钢系超额奖励 <span class="muted" style="font-weight:400;">→ 当吨毛利 > 200 时额外奖励</span></div>
+            <div class="conds mt-8">
+              <span class="c">产地: <b>沙钢系</b></span>
+              <span class="c">吨毛利: <b>> 200</b></span>
+            </div>
+          </div>
+          <div class="rt">¥30<small> · 元/吨</small></div>
+          <div><span class="tag muted">停用</span></div>
+          <div class="flex gap-8"><button class="btn ghost sm">编辑</button><button class="btn ghost sm">启用</button></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 底部操作 -->
+    <div class="card mt-16">
+      <div class="card-b" style="display:flex; justify-content: space-between; align-items: center;">
+        <div class="muted">⚠️ 修改方案 / 规则后, 当前月 (2026-05) 不会重算, 仅对下月生效.</div>
+        <div class="flex gap-8">
+          <button class="btn">取消</button>
+          <button class="btn">保存为草稿</button>
+          <button class="btn primary">💾 提交审批</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script src="./assets/layout.js"></script>
+</body>
+</html>

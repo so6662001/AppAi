@@ -1,0 +1,65 @@
+## 钢厂车间主任通用模板 (3 个: 炼钢/轧钢/镀锌)
+## 此文件含 3 个 pack, 由 loader 一次性导入
+
+- pack_id: PK_MILL_STEELMAKING_HEAD
+  name: 炼钢车间主任包
+  business_line: MILL
+  role_code: STEELMAKING_HEAD
+  metrics: [melt_tonnage, cast_tonnage, oee, availability, mtbf, mttr, burn_loss_rate, energy_per_ton, chemical_pass_rate, mechanical_pass_rate, cost_per_ton]
+  summary_kpis: [melt_tonnage, oee, burn_loss_rate, chemical_pass_rate]
+  briefing_cards: [SUMMARY, ANOMALY]
+  recommended_questions:
+    - 今日出钢量
+    - 化学成分合格率
+    - 转炉/电炉 OEE
+    - 钢水合格率
+    - 各炉次烧损
+    - 设备故障
+    - 吨钢能耗
+    - 浇铸良品率
+    - 各班产量对比
+    - 废钢消耗
+  default_dashboard: /pages/dashboard/steelmaking
+  row_acl_default: { resource: workcenter, rule: "process IN ('炼钢','转炉','电炉','连铸')" }
+
+- pack_id: PK_MILL_ROLLING_HEAD
+  name: 轧钢车间主任包
+  business_line: MILL
+  role_code: ROLLING_HEAD
+  metrics: [hot_rolling_tonnage, cold_rolling_tonnage, oee, availability, mtbf, mttr, yield_rate, burn_loss_rate, energy_per_ton, surface_defect_rate, dimension_deviation_rate, mechanical_pass_rate, cost_per_ton]
+  summary_kpis: [hot_rolling_tonnage, oee, yield_rate, surface_defect_rate]
+  briefing_cards: [SUMMARY, ANOMALY]
+  recommended_questions:
+    - 今日热轧产量
+    - 冷轧产量
+    - 各机架 OEE
+    - 加热炉烧损
+    - 力学性能合格率
+    - 尺寸偏差率
+    - 表面缺陷
+    - 换辊时间
+    - 设备故障 Top
+    - 吨钢综合能耗
+  default_dashboard: /pages/dashboard/rolling
+  row_acl_default: { resource: workcenter, rule: "process IN ('热轧','冷轧','加热炉')" }
+
+- pack_id: PK_MILL_COATING_HEAD
+  name: 镀锌彩涂车间主任包
+  business_line: MILL
+  role_code: COATING_HEAD
+  metrics: [coating_tonnage, oee, availability, surface_defect_rate, coil_downgrade_rate, energy_per_ton, cost_per_ton, mechanical_pass_rate]
+  summary_kpis: [coating_tonnage, surface_defect_rate, coil_downgrade_rate, oee]
+  briefing_cards: [SUMMARY, ANOMALY]
+  recommended_questions:
+    - 今日镀锌产量
+    - 表面缺陷率
+    - 钢卷降级率
+    - 锌花不均率
+    - 镀层厚度合格率
+    - 设备 OEE
+    - 各班产量
+    - 故障次数
+    - 吨钢能耗
+    - 客户拒收原因
+  default_dashboard: /pages/dashboard/coating
+  row_acl_default: { resource: workcenter, rule: "process IN ('镀锌','彩涂','镀铝锌')" }

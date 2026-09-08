@@ -1,0 +1,63 @@
+pack_id: PK_TRADE_SALES_REP
+name: 业务员包-钢贸
+description: 业务员只看自己客户的销售/吨毛利/应收, 不看成本与挂价底价
+business_line: TRADE
+role_code: SALES_REP
+
+# 注: 行权限自动注入 sales_owner_id = current_user_id
+metrics:
+  - sales_amount           # 我的销售额
+  - sales_tonnage          # 我的销售吨数
+  - avg_unit_price         # 我的成交均价
+  - ton_gross_profit       # 我的吨毛利 (auth_required: finance.profit.read 部分授权)
+  - order_count
+  - avg_order_tonnage
+  - new_customer_count
+  - active_customer_count
+  - customer_repeat_rate
+  - delivery_tonnage
+  - on_time_delivery_rate
+  - order_to_delivery_days
+  - cancel_rate
+  - return_rate
+  - ar_outstanding         # 我的应收余额
+  - ar_overdue_amount      # 我的逾期
+  - dso                    # 我的回款天数
+
+summary_kpis:
+  - sales_amount
+  - ton_gross_profit
+  - active_customer_count
+  - ar_overdue_amount
+
+briefing_cards: [SUMMARY, INSIGHT, RECOMMEND]
+
+recommended_questions:
+  - 我本月的销售额
+  - 我本月吨毛利对比上月
+  - 我的客户里 Top5 销售
+  - 我的客户里逾期最多的是谁
+  - 我有哪些客户三个月没下单了
+  - 我哪些订单还没发货
+  - 我的达交率怎么样
+  - 我的新客户数
+  - 我的退货率
+  - 我手里挂账库存值多少
+
+default_subscriptions:
+  - TPL_SALES_REP_DAILY        # 业务员日报 18:00
+  - TPL_SALES_REP_OVERDUE      # 我的逾期周报
+
+default_dashboard: /pages/my-performance
+
+# 列脱敏 (在 query-engine 处理)
+column_masking:
+  - { table: dim_customer, field: phone,        visibility: MASKED, mask: '138****####' }
+  - { table: dim_customer, field: bank_account, visibility: HIDDEN }
+  - { table: dws_sales_daily, field: cost_amount, visibility: HIDDEN }
+  - { table: dws_sales_daily, field: cost_price,  visibility: HIDDEN }
+
+# 行级默认规则
+row_acl_default:
+  resource: customer
+  rule: "customer.sales_owner_id = :current_user_id"

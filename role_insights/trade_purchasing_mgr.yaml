@@ -1,0 +1,118 @@
+## ============================================================
+## 钢贸采购经理 (TRADE_PURCHASING_MGR) 岗位画像
+## 钢贸利润的源头: 买得对 = 赚 70%
+## 关注: 买价/上游集中度/账期/对冲匹配/IQC/预付款
+## ============================================================
+role_code: TRADE_PURCHASING_MGR
+role_name: 采购经理
+business_line: TRADE
+level: MANAGER
+focus_areas: [price, supplier, inventory, payment, quality]
+
+primary_kpis:
+  - {code: purchase_price_vs_index,   weight: 0.25, direction: LOWER,  label: 采购价对市场指数偏离, peer_compare: true}
+  - {code: top1_supplier_share,       weight: 0.15, direction: LOWER,  label: Top1 供应商占比}
+  - {code: dpo_days,                  weight: 0.15, direction: HIGHER, label: 应付周转天数, benchmark: true}
+  - {code: iqc_pass_rate,             weight: 0.10, direction: HIGHER, label: 入库 IQC 合格率}
+  - {code: prepay_balance,            weight: 0.10, direction: LOWER,  label: 预付款占用余额}
+  - {code: hedge_match_pct,           weight: 0.15, direction: HIGHER, label: 库存对冲匹配度}
+  - {code: inv_turnover_days,         weight: 0.10, direction: LOWER,  label: 库存周转 (反映采买准确), benchmark: true}
+
+rules:
+  - id: PM_PRICE_ABOVE_INDEX
+    category: WEAKNESS
+    severity: HIGH
+    title: 采购均价高于市场指数 (买贵了)
+    when: "purchase_price_vs_index > 30"
+    finding: "本月加权采购价比 Mysteel 指数高 {purchase_price_vs_index:.0f} 元/吨 (合理范围 ≤30 元)"
+    impact: "本月采购 {month_tons:,.0f} 吨, 额外多花 {extra_cost:,.0f} 元, 等于吞掉销售毛利 {gp_impact_pct:.0%}"
+    actions:
+      - {label: 哪些钢厂买贵了, type: navigate, path: "/drilldown?metric=purchase_price_vs_index&dim=supplier"}
+      - {label: AI 提议价方案, type: chat, prompt: "我哪些钢厂买价偏高? 怎么谈?"}
+      - {label: 看其他贸易商成交价, type: navigate, path: "/market/peer-price"}
+    score_impact: 20
+
+  - id: PM_SUPPLIER_CONC
+    category: RISK
+    severity: HIGH
+    title: 上游单一供应商占比过高
+    when: "top1_supplier_share > 0.45"
+    finding: "Top1 供应商 {top1_supplier_name} 占采购 {top1_supplier_share:.0%} ({top1_supplier_amount:,.0f})"
+    impact: "若该供应商断货或调价, 直接影响 {affected_tonnage:,.0f} 吨/月业务, 流失客户风险"
+    actions:
+      - {label: 看采购结构, type: navigate, path: "/drilldown?metric=purchase_amount&dim=supplier"}
+      - {label: AI 推荐替代供应商, type: chat, prompt: "推荐 3 个替代上游, 含具体钢厂和品类"}
+    score_impact: 14
+
+  - id: PM_DPO_LOW
+    category: WEAKNESS
+    severity: MEDIUM
+    title: 应付账期偏短 (没占够上游资金)
+    when: "dpo_days < benchmark('TRADE','dpo_days').p50"
+    finding: "应付周转 {dpo_days:.0f} 天, 行业中位 {p50:.0f} 天, 短 {gap:.0f} 天"
+    impact: "若拉长到行业水平, 可释放运营资金 {extra_capital:,.0f}, 年化省利息 {interest:,.0f}"
+    actions:
+      - {label: 看各供应商账期, type: navigate, path: "/drilldown?metric=dpo_days&dim=supplier"}
+      - {label: AI 提议谈判方案, type: chat, prompt: "怎么和上游谈延期付款不伤关系?"}
+    score_impact: 10
+
+  - id: PM_IQC_LOW
+    category: WEAKNESS
+    severity: HIGH
+    title: 入库 IQC 合格率偏低
+    when: "iqc_pass_rate < 0.96"
+    finding: "本月入库合格率 {iqc_pass_rate:.1%}, 不合格 {fail_count} 单, 主要来源 {worst_supplier}"
+    impact: "退货物流 + 信誉影响, 已收到客户投诉 {complaint_count} 起"
+    actions:
+      - {label: 看不合格明细, type: navigate, path: "/drilldown?metric=iqc_fail&dim=supplier"}
+      - {label: "对 {worst_supplier} 提整改", type: action, handler: createSupplierCorrection}
+    score_impact: 12
+
+  - id: PM_PREPAY_HIGH
+    category: RISK
+    severity: MEDIUM
+    title: 预付款占用过多
+    when: "prepay_balance > prepay_threshold"
+    finding: "预付款余额 {prepay_balance:,.0f} 元, 远超安全线 {prepay_threshold:,.0f}"
+    impact: "资金被上游占用, 年化资金成本 {interest:,.0f}, 若上游违约直接坏账"
+    actions:
+      - {label: 看预付款明细, type: navigate, path: "/drilldown?metric=prepay_balance&dim=supplier"}
+      - {label: AI 评估上游信用, type: chat, prompt: "我哪些上游预付款过多? 信用如何?"}
+    score_impact: 10
+
+  - id: PM_HEDGE_MISMATCH
+    category: RISK
+    severity: HIGH
+    title: 库存与对冲不匹配
+    when: "hedge_match_pct < 0.70"
+    finding: "持仓 {inv_tonnage:,.0f} 吨, 对冲 {hedge_tonnage:,.0f} 吨, 匹配度 {hedge_match_pct:.0%}"
+    impact: "未对冲 {gap_tonnage:,.0f} 吨, 价格波动 100 元/吨损失 {risk_amount:,.0f}"
+    actions:
+      - {label: 与期货部协同, type: action, handler: notifyHedgeDesk}
+      - {label: 查看对冲缺口, type: navigate, path: "/hedge-board?filter=mismatch"}
+    score_impact: 15
+
+  - id: PM_INV_OVERSTOCK
+    category: WEAKNESS
+    severity: MEDIUM
+    title: 库存周转过慢 (可能买多了)
+    when: "inv_turnover_days > benchmark('TRADE','inv_turnover_days').p50 * 1.20"
+    finding: "库存周转 {inv_turnover_days:.0f} 天, 行业中位 {p50:.0f} 天, 多 {gap:.0f} 天"
+    impact: "多占资金 {extra_capital:,.0f}, 仓储费 {storage_cost:,.0f}, 跌价风险大"
+    actions:
+      - {label: 看慢销 SKU, type: navigate, path: "/drilldown?metric=inv_amount&dim=material&filter=slow"}
+      - {label: AI 出特价方案, type: chat, prompt: "哪些慢销品该挂特价? 配套定价建议"}
+    score_impact: 12
+
+routines:
+  - "查看每日采购成交 vs 指数"
+  - "查看待入库 + IQC 待检"
+  - "查看上游应付到期日历"
+  - "查看库存周转 / 呆滞预警"
+  - "查看与期货部对冲匹配"
+
+education:
+  - topic: 怎么和钢厂谈延期付款
+  - topic: 钢贸采购定价 SOP
+  - topic: 期现一体的采购对冲操作
+  - topic: 上游信用评估模型

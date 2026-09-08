@@ -1,0 +1,49 @@
+pack_id: PK_TRADE_PROCUREMENT_DIR
+name: 采购总监包-钢贸
+description: 采购金额/供应商表现/采购价对指数差
+business_line: TRADE
+role_code: PROCUREMENT_DIR
+
+metrics:
+  - purchase_amount
+  - purchase_tonnage
+  - avg_purchase_price
+  - purchase_price_vs_index
+  - receipt_tonnage
+  - supplier_count
+  - supplier_otd
+  - supplier_quality_pass
+  - supplier_concentration_top10
+  - lead_time_avg
+  - iqc_reject_rate
+  - po_overdue_rate
+  - ap_outstanding
+  - dpo
+  - raw_material_inv_days
+  - inv_amount
+  - aging_181_365_amount
+  - aging_365_plus_amount
+
+summary_kpis:
+  - purchase_amount
+  - supplier_otd
+  - purchase_price_vs_index
+  - po_overdue_rate
+
+briefing_cards: [SUMMARY, INSIGHT, ADVICE]
+
+recommended_questions:
+  - 本月采购金额
+  - 采购吨价对 Mysteel 价差
+  - Top10 供应商占比
+  - 供应商准交率排名
+  - 来料合格率最低供应商
+  - 应付账款余额
+  - 平均到货周期
+  - 库龄长的原料
+  - 采购单逾期率
+  - 哪些供应商需要换
+
+default_subscriptions:
+  - TPL_PROCUREMENT_WEEKLY
+default_dashboard: /pages/dashboard/procurement

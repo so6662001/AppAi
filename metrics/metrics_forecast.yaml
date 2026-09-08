@@ -1,0 +1,108 @@
+## ============================================================
+## 预测域指标（6 个） + 经营建议规则
+## domain: FORECAST
+## ============================================================
+domain: FORECAST
+version: 1
+extends: [_common.yaml, _dimensions.yaml]
+
+models:
+  ## 各 metric_code 使用的模型
+  - { code: TON_GP,         model: Prophet,           refresh: weekly_full+daily_incr }
+  - { code: SALES_TON,      model: LightGBM-Quantile, refresh: weekly_full+daily_incr }
+  - { code: INDEX_PRICE,    model: Prophet,           refresh: weekly_full+daily_incr }
+  - { code: STOCKOUT_RISK,  model: XGBoost-Classifier, refresh: weekly_full+daily_incr }
+  - { code: OVERSTOCK_RISK, model: XGBoost-Classifier, refresh: weekly_full+daily_incr }
+
+metrics:
+
+  - { name: forecast_ton_gross_profit_nextweek, label: 下周吨毛利预测, code: M151,
+      fact: dws_forecast_daily,
+      filter: "metric_code='TON_GP' AND target_date BETWEEN :next_week_from AND :next_week_to",
+      formula: "AVG(forecast_value)",
+      extra_fields: [forecast_lower_90, forecast_upper_90, mape_30d],
+      format: price,
+      sensitivity: HIGH, bizToken_multiplier: 1.5 }
+
+  - { name: forecast_sales_tonnage_nextweek, label: 下周销量预测, code: M152,
+      fact: dws_forecast_daily,
+      filter: "metric_code='SALES_TON'",
+      formula: SUM(forecast_value),
+      format: ton, bizToken_multiplier: 1.5 }
+
+  - { name: forecast_index_price_nextweek, label: 下周指数价格预测, code: M153,
+      fact: dws_forecast_daily,
+      filter: "metric_code='INDEX_PRICE'",
+      formula: AVG(forecast_value),
+      format: price, applicable: [TRADE, MILL] }
+
+  - { name: stockout_risk_score, label: 缺货风险评分, code: M154,
+      fact: dws_forecast_daily,
+      filter: "metric_code='STOCKOUT_RISK'",
+      formula: AVG(forecast_value),
+      format: percent }
+
+  - { name: overstock_risk_score, label: 呆滞风险评分, code: M155,
+      fact: dws_forecast_daily,
+      filter: "metric_code='OVERSTOCK_RISK'",
+      formula: AVG(forecast_value),
+      format: percent }
+
+  - { name: action_recommendation, label: 经营建议, code: M156,
+      semantics: virtual,
+      requires_metrics: [forecast_index_price_nextweek, listed_price, daily_inv_tonnage, sales_tonnage, stockout_risk_score, overstock_risk_score, unhedged_tonnage],
+      logic: rule_engine,
+      note: "由 advice-engine 输出, 见下方 action_rules" }
+
+## ============================================================
+## 行动建议规则（每日 06:00 跑, 命中后入 advice_inbox）
+## ============================================================
+action_rules:
+
+  - id: ACT_ACCELERATE_SHIPMENT
+    title: 加快出货
+    when: "forecast_index_price_nextweek < listed_price * 0.98
+           AND daily_inv_tonnage > avg_inv_tonnage * 1.2"
+    severity: HIGH
+    advice: "指数预计下周下行 {pct}%, 当前库存高于均值 {ratio}%, 建议加快 {product_type} 出货锁定毛利"
+    suggested_actions:
+      - { action: 挂特价, target_price: "{forecast_index_price_nextweek + 30}" }
+      - { action: 通知业务员主动联系 Top10 客户 }
+
+  - id: ACT_HOLD_AND_SELL_HIGH
+    title: 惜售
+    when: "forecast_index_price_nextweek > listed_price * 1.02
+           AND overstock_risk_score < 0.3"
+    severity: MEDIUM
+    advice: "指数预计上行 {pct}%, 当前呆滞风险低, 建议 {grade} {product_type} 小幅惜售"
+    suggested_actions:
+      - { action: 上调挂价, target_price: "{forecast_index_price_nextweek - 20}" }
+
+  - id: ACT_REPLENISH
+    title: 补库
+    when: "stockout_risk_score > 0.7
+           AND forecast_index_price_nextweek <= listed_price"
+    severity: HIGH
+    advice: "{material_name} 缺货风险 {pct}%, 价格平稳或下行, 建议补库 {suggest_qty} 吨"
+    suggested_actions:
+      - { action: 立即下采购单 }
+      - { action: 询价 Top3 供应商 }
+
+  - id: ACT_HEDGE_OPEN
+    title: 加套保
+    when: "unhedged_tonnage > hedge_position_limit * 0.8"
+    severity: HIGH
+    advice: "未套保头寸 {value} 吨接近上限, 建议在 {contract_code} 上空 {qty} 吨"
+
+  - id: ACT_SLOW_MOVING_CLEAR
+    title: 清呆
+    when: "overstock_risk_score > 0.8
+           AND aging_181_365_amount > inv_amount * 0.1"
+    severity: HIGH
+    advice: "{material_name} 库龄 180~365 天占比 {pct}%, 建议挂特价或调拨"
+    suggested_actions:
+      - { action: 生成清呆清单, target: aging_181_365 + aging_365_plus }
+
+confidence_threshold:
+  mape_30d_max: 0.15
+  low_confidence_label: "低置信(模型 30 天 MAPE > 15%)"

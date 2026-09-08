@@ -1,0 +1,41 @@
+pack_id: PK_TRADE_OWNER
+name: 老板包-钢贸
+description: 钢铁贸易老板/总经理视角, 覆盖销售/库存/资金/风险/净利全景
+business_line: TRADE
+role_code: OWNER
+
+# 老板看全部 178 个指标
+metrics: ALL
+
+summary_kpis:
+  - sales_amount             # 销售额
+  - ton_gross_profit         # 吨毛利
+  - inv_amount               # 库存金额
+  - net_margin               # 净利率
+
+briefing_cards:
+  - SUMMARY
+  - RISK            # 风险预警
+  - CAPITAL         # 资金占用 Top
+  - ADVICE          # AI 建议
+  - INSIGHT         # 异常洞察
+  - FORECAST        # 下周预测
+
+recommended_questions:
+  - 昨天我们卖了多少
+  - 本月吨毛利对比上月
+  - 资金占用最高的 10 个客户
+  - 哪些客户授信使用率超 90%
+  - 库存浮亏多少
+  - 套保净敞口多少
+  - 库龄一年以上的呆滞金额
+  - 下周吨毛利预测
+  - 沙钢系 Q355B 今天挂价
+  - Top5 业务员业绩对比
+
+default_subscriptions:
+  - TPL_OWNER_DAILY              # 老板日报 (销售&库存)
+  - TPL_OWNER_CAPITAL_TOP10      # 资金占用 Top10
+  - TPL_OWNER_WEEKLY_PROFIT      # 周报-毛利与挂价让利
+
+default_dashboard: /pages/dashboard/owner

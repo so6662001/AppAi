@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>我的提成 · 钢铁 AI 经营分析平台</title>
+<link rel="stylesheet" href="./assets/shared.css">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  .summary {
+    background: linear-gradient(135deg, #fff1f0 0%, #fff7e6 100%);
+    border-radius: 12px; padding: 24px;
+    border: 1px solid #ffd591;
+    display: grid; grid-template-columns: 280px 1fr; gap: 32px;
+  }
+  .summary .main { text-align: center; }
+  .summary .main .lbl { color: var(--text-2); font-size: 13px; }
+  .summary .main .val { font-size: 48px; font-weight: 700; color: var(--danger); letter-spacing: -1px; margin-top: 4px; line-height: 1.1; }
+  .summary .main .unit { font-size: 16px; color: var(--text-2); }
+  .summary .main .sub { color: var(--text-3); font-size: 12px; margin-top: 6px; }
+  .summary .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; align-content: center; }
+  .summary .stats .s { background: rgba(255,255,255,.6); padding: 12px 14px; border-radius: 8px; }
+  .summary .stats .s .l { font-size: 12px; color: var(--text-2); }
+  .summary .stats .s .v { font-size: 18px; font-weight: 700; }
+
+  .calc-flow { background: #fff; border-radius: 8px; padding: 24px; border: 1px solid var(--border); }
+  .flow-row { display: flex; align-items: center; gap: 16px; padding: 14px 0; border-bottom: 1px dashed var(--border); }
+  .flow-row:last-child { border-bottom: 0; }
+  .flow-row .ico { width: 36px; height: 36px; border-radius: 8px; display: grid; place-items: center; font-size: 16px; flex-shrink: 0; }
+  .flow-row .ico.add { background: #f6ffed; color: var(--success); }
+  .flow-row .ico.sub { background: #fff1f0; color: var(--danger); }
+  .flow-row .ico.adj { background: #f0f5ff; color: var(--primary); }
+  .flow-row .ico.eq  { background: #fff7e6; color: var(--warning); }
+  .flow-row .lbl { flex: 1; }
+  .flow-row .lbl .t { font-weight: 600; font-size: 14px; }
+  .flow-row .lbl .d { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+  .flow-row .amt { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .flow-row .amt.neg { color: var(--danger); }
+  .flow-row .amt.pos { color: var(--success); }
+
+  .trace { font-family: ui-monospace, monospace; font-size: 12px; background: #f4f6fa; padding: 12px 14px; border-radius: 6px; line-height: 1.7; color: var(--text-2); }
+  .trace b { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell" data-active="commission-detail.html" data-crumbs="人与提成 <span class=&quot;sep&quot;>/</span> <span class=&quot;cur&quot;>我的提成</span>" data-user="林某" data-role="销售经理 · 华东大区 · 工号 200237"></div>
+
+  <main class="main">
+
+    <div class="page-title">
+      <div>
+        <h1>我的提成</h1>
+        <div class="desc">方案 <b>TPL_TRADE_GP30</b> · 工号 200237 · 林某</div>
+      </div>
+      <div class="flex gap-12">
+        <select style="width:140px"><option>2026 年 05 月</option><option>2026 年 04 月</option><option>2026 年 03 月</option></select>
+        <button class="btn">查看完整工资条</button>
+        <button class="btn primary">📤 导出 PDF</button>
+      </div>
+    </div>
+
+    <!-- 顶部大数字 -->
+    <div class="summary mb-16">
+      <div class="main">
+        <div class="lbl">本月实际计提</div>
+        <div class="val">¥18,720<span class="unit"></span></div>
+        <div class="sub">已审核 · 待发放 · 2026-06-05</div>
+        <div style="margin-top: 16px; display:flex; gap:8px; justify-content:center;">
+          <span class="tag success">✔ 已审核</span>
+          <span class="tag muted">未发放</span>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="s"><div class="l">挂牌毛利</div><div class="v" style="color:var(--success)">¥84,000</div></div>
+        <div class="s"><div class="l">销售吨数</div><div class="v">462 吨</div></div>
+        <div class="s"><div class="l">销售额</div><div class="v">¥1,892,000</div></div>
+        <div class="s"><div class="l">订单数</div><div class="v">14 单</div></div>
+        <div class="s"><div class="l">应收占款均值</div><div class="v">¥1,800,000</div></div>
+        <div class="s"><div class="l">客户数</div><div class="v">8 个</div></div>
+        <div class="s"><div class="l">新客户</div><div class="v" style="color:var(--success)">2 个</div></div>
+        <div class="s"><div class="l">环比上月</div><div class="v" style="color:var(--success)">+8.4%</div></div>
+      </div>
+    </div>
+
+    <!-- 计算明细 (流式) -->
+    <div class="row mb-16" style="display:grid; grid-template-columns: 2fr 1fr; gap: 16px;">
+      <div class="calc-flow">
+        <div class="card-h" style="border:0; padding:0 0 12px;">
+          <h3>💰 计算明细 · 流水账</h3>
+          <div class="tools muted">方案: TPL_TRADE_GP30 (钢贸-按挂牌毛利30%) · 基数: LISTED_GROSS_PROFIT</div>
+        </div>
+
+        <div class="flow-row">
+          <div class="ico add">＋</div>
+          <div class="lbl">
+            <div class="t">原始计提合计</div>
+            <div class="d">挂牌毛利 ¥84,000 · 加权命中系数 28.3% · 客群/直销调整后</div>
+          </div>
+          <div class="amt pos">¥23,800</div>
+        </div>
+
+        <div class="flow-row">
+          <div class="ico sub">－</div>
+          <div class="lbl">
+            <div class="t">应收占款利息</div>
+            <div class="d">月均应收 ¥1,800,000 × 0.0125%/天 × 30 天</div>
+          </div>
+          <div class="amt neg">-¥6,750</div>
+        </div>
+
+        <div class="flow-row">
+          <div class="ico sub">－</div>
+          <div class="lbl">
+            <div class="t">库存占款利息</div>
+            <div class="d">月均库存 ¥800,000 × 0.015%/天 × 30 天</div>
+          </div>
+          <div class="amt neg">-¥3,600</div>
+        </div>
+
+        <div class="flow-row">
+          <div class="ico sub">－</div>
+          <div class="lbl">
+            <div class="t">业务费扣减</div>
+            <div class="d">SO20260512-X · 客户 [江某机械] · 业务招待费 (已审批)</div>
+          </div>
+          <div class="amt neg">-¥500</div>
+        </div>
+
+        <div class="flow-row">
+          <div class="ico sub">－</div>
+          <div class="lbl">
+            <div class="t">抹零扣减</div>
+            <div class="d">SO20260518-Y · 整单尾差</div>
+          </div>
+          <div class="amt neg">-¥80</div>
+        </div>
+
+        <div class="flow-row" style="background:#fff7e6; margin: 8px -24px -24px; padding: 18px 24px; border-radius: 0 0 8px 8px;">
+          <div class="ico eq">＝</div>
+          <div class="lbl">
+            <div class="t">本月实际计提</div>
+            <div class="d">无封顶 · 保底 ¥3,000 已超出 · 审核状态: 已批准</div>
+          </div>
+          <div class="amt" style="color:var(--danger); font-size:28px;">¥18,720</div>
+        </div>
+      </div>
+
+      <!-- 解释链 -->
+      <div class="card">
+        <div class="card-h">
+          <h3>🔍 计算说明 (explain_trace)</h3>
+          <div class="tools"><span class="tag muted">v2.4</span></div>
+        </div>
+        <div class="card-b">
+          <div class="trace">
+方案=<b>TPL_TRADE_GP30</b><br>
+(【模板】钢贸-按挂牌毛利30%)<br>
+基数类型=<b>LISTED_GROSS_PROFIT</b><br>
+默认系数=0.30<br>
+<br>
+14 单订单分别计提:<br>
+8 单 命中规则#1 (直销+现款+利润型, 35%)<br>
+4 单 命中规则#3 (直销+走量型, 25%)<br>
+2 单 命中规则#4 (间销/转单, 15%)<br>
+<br>
+原始合计=<b>¥23,800.00</b><br>
+应收利息扣减=<b>¥6,750.00</b><br>
+库存利息=<b>¥3,600.00</b><br>
+预付利息=<b>¥0.00</b><br>
+业务费扣=<b>¥500.00</b><br>
+抹零扣=<b>¥80.00</b><br>
+<br>
+计算值=<b>¥18,870.00</b><br>
+保底=¥3,000 (已超过)<br>
+封顶=∞<br>
+最终=<b style="color:var(--danger)">¥18,720.00</b><br>
+(注: 减去 已审批扣款 ¥150)
+          </div>
+          <div class="actions mt-12">
+            <button class="btn sm">📋 复制审计ID</button>
+            <button class="btn sm primary">💬 问 AI 解释</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 规则命中明细 -->
+    <div class="card mb-16">
+      <div class="card-h">
+        <h3>📋 14 单订单 · 规则命中明细</h3>
+        <div class="tools">
+          <button class="btn sm">筛选规则</button>
+          <button class="btn sm">📥 导出</button>
+        </div>
+      </div>
+      <div class="card-b no-pad">
+        <table class="tb">
+          <thead>
+            <tr>
+              <th>订单号</th><th>日期</th><th>客户</th>
+              <th>客群</th><th>销售方式</th><th>结算</th>
+              <th class="num">吨数</th><th class="num">挂牌毛利</th>
+              <th>命中规则</th><th class="num">系数</th><th class="num">本单提成</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>SO20260503-001</td><td>5/3</td><td>客户 A</td><td><span class="tag success">利润型</span></td><td>直销</td><td>现款</td><td class="num">52</td><td class="num">¥8,400</td><td>规则#1 直销+现款+利润型</td><td class="num">35%·1.2·1.0</td><td class="num bold">¥3,528</td></tr>
+            <tr><td>SO20260505-003</td><td>5/5</td><td>客户 B</td><td><span class="tag muted">走量型</span></td><td>直销</td><td>T+30</td><td class="num">120</td><td class="num">¥10,800</td><td>规则#3 直销+走量型</td><td class="num">25%·0.8·1.0</td><td class="num bold">¥2,160</td></tr>
+            <tr><td>SO20260507-007</td><td>5/7</td><td>客户 A</td><td><span class="tag success">利润型</span></td><td>直销</td><td>T+30</td><td class="num">38</td><td class="num">¥6,840</td><td>规则#2 直销+T30+利润型</td><td class="num">32%·1.2·1.0</td><td class="num bold">¥2,627</td></tr>
+            <tr><td>SO20260510-011</td><td>5/10</td><td>客户 C</td><td><span class="tag muted">走量型</span></td><td>间销</td><td>T+60</td><td class="num">85</td><td class="num">¥10,200</td><td>规则#4 间销/转单</td><td class="num">15%·0.8·0.5</td><td class="num bold">¥612</td></tr>
+            <tr><td>SO20260512-014</td><td>5/12</td><td>江某机械</td><td><span class="tag success">利润型</span></td><td>直销</td><td>现款</td><td class="num">46</td><td class="num">¥9,200</td><td>规则#1 直销+现款+利润型</td><td class="num">35%·1.2·1.0</td><td class="num bold">¥3,864</td></tr>
+            <tr><td>SO20260515-018</td><td>5/15</td><td>客户 D</td><td><span class="tag success">利润型</span></td><td>直销</td><td>现款</td><td class="num">28</td><td class="num">¥5,600</td><td>规则#1 直销+现款+利润型</td><td class="num">35%·1.2·1.0</td><td class="num bold">¥2,352</td></tr>
+            <tr><td>SO20260518-022</td><td>5/18</td><td>客户 E</td><td><span class="tag muted">走量型</span></td><td>直销</td><td>T+30</td><td class="num">42</td><td class="num">¥3,360</td><td>规则#3 直销+走量型</td><td class="num">25%·0.8·1.0</td><td class="num bold">¥672</td></tr>
+            <tr><td>SO20260520-027</td><td>5/20</td><td>客户 F</td><td><span class="tag success">利润型</span></td><td>直销</td><td>现款</td><td class="num">22</td><td class="num">¥4,400</td><td>规则#1 直销+现款+利润型</td><td class="num">35%·1.2·1.0</td><td class="num bold">¥1,848</td></tr>
+            <tr><td colspan="8"></td><td><b>合计</b></td><td></td><td class="num bold" style="color:var(--success); font-size:14px;">¥23,800</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 趋势图 -->
+    <div class="row-2">
+      <div class="card">
+        <div class="card-h"><h3>📈 我的近 6 个月提成趋势</h3></div>
+        <div class="card-b"><div id="ch_trend" class="chart"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>🏆 对比同事 · 本月</h3></div>
+        <div class="card-b"><div id="ch_peer" class="chart"></div></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="./assets/layout.js"></script>
+<script>
+  echarts.init(document.getElementById('ch_trend')).setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { top: 4 },
+    grid: { left: 60, right: 30, top: 40, bottom: 30 },
+    xAxis: { type:'category', data:['2025-12','2026-01','2026-02','2026-03','2026-04','2026-05'] },
+    yAxis: { type: 'value', axisLabel: { formatter: '¥{value}' } },
+    series: [
+      { name:'实际计提', type:'bar', data:[12800, 14200, 13600, 15800, 17280, 18720],
+        itemStyle:{color:'#1677ff'}, barWidth:24,
+        label: { show:true, position:'top', formatter:'¥{c}', fontSize: 11 } },
+      { name:'保底', type:'line', data:[3000,3000,3000,3000,3000,3000], lineStyle:{type:'dashed', color:'#fa8c16'}, symbol:'none' },
+    ],
+  });
+
+  echarts.init(document.getElementById('ch_peer')).setOption({
+    tooltip: { trigger:'axis', axisPointer: { type:'shadow' } },
+    grid: { left: 60, right: 30, top: 20, bottom: 30 },
+    xAxis: { type:'value', axisLabel:{formatter:'¥{value}'} },
+    yAxis: { type:'category', data:['林某 (我)','王某','陈某','李某','赵某','刘某','钱某','孙某'] },
+    series: [{
+      type: 'bar', data: [18720, 17400, 16280, 14100, 12800, 11200, 10500, 8900],
+      itemStyle: { color: (p) => p.dataIndex === 0 ? '#f5222d' : '#1677ff' },
+      label: { show:true, position:'right', formatter:'¥{c}', fontSize: 11 },
+      barWidth: 20,
+    }],
+  });
+</script>
+</body>
+</html>

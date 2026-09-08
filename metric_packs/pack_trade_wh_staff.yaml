@@ -1,0 +1,45 @@
+pack_id: PK_TRADE_WH_STAFF
+name: 仓管员包-钢贸
+description: 收发货明细, 不看价格/毛利
+business_line: TRADE
+role_code: WH_STAFF
+
+metrics:
+  - inv_tonnage
+  - inv_skus
+  - inflow_tonnage
+  - outflow_tonnage
+  - net_change_tonnage
+  - inflow_outflow_ratio
+  - inventory_loss_tonnage
+  - avg_pieces_per_pile
+
+summary_kpis:
+  - inv_tonnage
+  - inflow_tonnage
+  - outflow_tonnage
+  - inventory_loss_tonnage
+
+briefing_cards: [SUMMARY]
+
+recommended_questions:
+  - 今天入库吨数
+  - 今天出库吨数
+  - 待发货清单
+  - 本月盘亏
+  - 各 SKU 在库数
+  - 安全库存触发清单
+  - 我管的仓位利用率
+  - 移库记录
+  - 调拨记录
+  - 缺货 SKU 数
+
+default_subscriptions: []
+default_dashboard: /pages/dashboard/warehouse-ops
+
+column_masking:
+  - { table: '*', field: 'gross_profit',     visibility: HIDDEN }
+  - { table: '*', field: 'cost_amount',      visibility: HIDDEN }
+  - { table: '*', field: 'unit_price',       visibility: HIDDEN }
+  - { table: '*', field: 'amount',           visibility: HIDDEN }
+  - { table: '*', field: 'avg_cost_price',   visibility: HIDDEN }

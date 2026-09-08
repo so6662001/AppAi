@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- 自研 RDP 启动器示例(VB.NET WinForms)。老项目是 .NET Framework 也可以:把 TargetFramework 改成 net48 即可。 -->
+    <OutputType>WinExe</OutputType>
+    <RootNamespace></RootNamespace>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <StartupObject>VbNetRdpLauncher.Program</StartupObject>
+    <OptionStrict>Off</OptionStrict>
+    <OptionInfer>On</OptionInfer>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <MyType>Windows</MyType>
+    <NoWarn>CA1416;BC42017</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SteelGuard.AntiRpa.RdpLauncher\SteelGuard.AntiRpa.RdpLauncher.csproj" />
+  </ItemGroup>
+
+</Project>

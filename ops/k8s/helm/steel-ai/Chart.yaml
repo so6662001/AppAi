@@ -1,0 +1,6 @@
+apiVersion: v2
+name: steel-ai
+description: 钢铁 AI 经营分析平台 Helm Chart
+version: 0.1.0
+appVersion: "0.1.0"
+type: application

@@ -1,0 +1,72 @@
+## ============================================================
+## 期货交易员 (TRADE_HEDGE_TRADER) 岗位画像
+## ============================================================
+role_code: TRADE_HEDGE_TRADER
+role_name: 期货交易员
+business_line: TRADE
+level: STAFF
+focus_areas: [hedge, risk, basis, pnl]
+
+primary_kpis:
+  - {code: combined_hedge_pnl,        weight: 0.30, direction: HIGHER, label: 期现总 PnL}
+  - {code: locked_unhedged_tonnage,   weight: 0.25, direction: LOWER,  label: 已锁未对冲吨}
+  - {code: hedge_margin_used,         weight: 0.10, direction: LOWER,  label: 保证金占用}
+  - {code: basis_current,             weight: 0.10, direction: NEUTRAL,label: 当前基差}
+  - {code: net_exposure_after_hedge,  weight: 0.25, direction: LOWER,  label: 套保后净敞口}
+
+rules:
+  - id: HD_UNHEDGED_HIGH
+    category: RISK
+    severity: HIGH
+    title: 已锁价未对冲过多
+    when: "locked_unhedged_tonnage > 500"
+    finding: "已锁价但未对冲 {locked_unhedged_tonnage:.0f} 吨, 暴露在单边价格波动中"
+    impact: "若市场反向波动 100 元/吨, 损失 ¥{risk_amount:,.0f}"
+    actions:
+      - {label: 一键对冲, type: action, handler: autoHedge}
+      - {label: 看锁价单清单, type: navigate, path: "/hedge-board?filter=unhedged"}
+    score_impact: 22
+
+  - id: HD_NET_EXPOSURE_BREACH
+    category: RISK
+    severity: HIGH
+    title: 套保后净敞口超限
+    when: "net_exposure_after_hedge > 2000"
+    finding: "净敞口 {net_exposure_after_hedge:.0f} 吨, 公司限额 2000 吨"
+    impact: "突破风控线, 需立即降敞口或申请额外授信"
+    actions:
+      - {label: 提交风控审核, type: action, handler: submitRiskApproval}
+      - {label: AI 提对冲方案, type: chat, prompt: "怎么把净敞口拉回 2000 吨内?"}
+    score_impact: 20
+
+  - id: HD_BASIS_INVERT
+    category: OPPORTUNITY
+    severity: MEDIUM
+    title: 基差倒挂持续 (现货低于期货)
+    when: "basis_invert_days >= 3"
+    finding: "基差倒挂 {basis_invert_days} 天, 当前基差 {basis_current:.0f} 元/吨"
+    impact: "现货便宜期货贵, 可虚拟库存盈利"
+    actions:
+      - {label: AI 套利方案, type: chat, prompt: "基差倒挂怎么套利"}
+    score_impact: -5
+
+  - id: HD_PNL_NEG_WEEKLY
+    category: WEAKNESS
+    severity: MEDIUM
+    title: 期货段连续 2 周亏损
+    when: "futures_pnl_2w < 0 AND futures_pnl_1w < 0"
+    finding: "近 2 周期货段累计 ¥{futures_pnl_2w:,.0f}"
+    impact: "若现货段毛利无法补齐, 综合 PnL 转负"
+    actions:
+      - {label: 复盘交易, type: navigate, path: "/hedge-board?tab=pnl-review"}
+    score_impact: 8
+
+routines:
+  - "查看当日 PnL"
+  - "查看未对冲单"
+  - "查看主力合约持仓"
+  - "查看基差异常"
+
+education:
+  - topic: 怎么管 hedge ratio
+  - topic: 基差套利策略

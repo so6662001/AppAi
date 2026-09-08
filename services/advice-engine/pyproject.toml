@@ -1,0 +1,22 @@
+[project]
+name = "advice-engine"
+version = "0.1.0"
+description = "AI 经营建议引擎 - 扫描 action_rules 生成 advice_inbox"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.111", "uvicorn[standard]>=0.30",
+    "sqlalchemy>=2.0", "pymysql>=1.1", "apscheduler>=3.10",
+    "PyYAML>=6.0", "httpx>=0.27",
+]
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

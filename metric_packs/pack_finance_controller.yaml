@@ -1,0 +1,73 @@
+pack_id: PK_FINANCE_CONTROLLER
+name: 财务总监包-多主体合并
+description: 财务总监 / 控股 / 多主体合并视角, 关注三大报表 + 关联交易
+business_line: ALL
+role_code: FINANCE_CONTROLLER
+
+metrics:
+  # 三大报表
+  - revenue
+  - gross_profit
+  - operating_profit
+  - net_profit
+  - gross_margin_pct
+  - net_margin_pct
+  - ebitda
+  - total_assets
+  - total_liab
+  - total_equity
+  - current_ratio
+  - quick_ratio
+  - debt_to_asset
+  - ccc_days
+  - cf_operating
+  - cf_net
+  # 多主体
+  - intercompany_eliminate_amt
+  # 暗规则审计
+  - biz_fee_total
+  - biz_fee_to_gp_ratio
+  - roundoff_total
+  - kickback_in_amount
+  - kickback_out_amount
+  # 提成
+  - commission_total
+  - commission_to_gp_ratio
+  - commission_ar_deduct
+  - commission_inv_deduct
+  # 资金
+  - capital_occupation
+  - ar_amount
+  - ar_aging_181_365_amount
+
+summary_kpis:
+  - net_profit
+  - operating_profit
+  - cf_operating
+  - debt_to_asset
+
+briefing_cards:
+  - SUMMARY
+  - FINANCE_PNL          # 利润表速览
+  - FINANCE_BS           # 资产负债速览
+  - INTERCOMPANY         # 关联交易抵消
+  - DARK_RULE_AUDIT      # 业务费/抹零/返点审计
+
+recommended_questions:
+  - 本月各主体净利润
+  - 合并报表对比单主体差异
+  - 关联交易抵消金额
+  - 各主体资产负债率
+  - 现金循环天数
+  - 本月业务费/抹零/返点合计
+  - 应收账款账龄分布
+  - 经营活动现金流
+  - 哪个主体毛利率最高
+  - 提成占毛利比
+
+default_subscriptions:
+  - TPL_FIN_MONTHLY_PNL
+  - TPL_FIN_BS_SNAPSHOT
+  - TPL_FIN_INTERCOMPANY_WEEKLY
+
+default_dashboard: /pages/dashboard/finance_controller

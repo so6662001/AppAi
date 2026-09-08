@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>期现结合看板 · 钢铁 AI 经营分析平台</title>
+<link rel="stylesheet" href="./assets/shared.css">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  .alert-strip { background: linear-gradient(90deg, #fff1f0 0%, #fff7e6 100%); border: 1px solid #ffa39e; border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .alert-strip .ic { font-size: 22px; }
+  .alert-strip b { color: var(--danger); }
+  .pnl-card { padding: 16px; border-radius: 8px; border: 1px solid var(--border); background: #fff; }
+  .pnl-card.pos { background: linear-gradient(135deg, #f6ffed, #fff); border-color: #b7eb8f; }
+  .pnl-card.neg { background: linear-gradient(135deg, #fff1f0, #fff); border-color: #ffa39e; }
+  .pnl-card .ti { color: var(--text-2); font-size: 12px; }
+  .pnl-card .vl { font-size: 24px; font-weight: 700; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .pnl-card .vl.pos { color: var(--success); }
+  .pnl-card .vl.neg { color: var(--danger); }
+  .pnl-card .sub { font-size: 11px; color: var(--text-3); margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell" data-active="hedge-board.html" data-crumbs="报表与预测 <span class=&quot;sep&quot;>/</span> <span class=&quot;cur&quot;>期现结合看板</span>"></div>
+
+  <main class="main">
+
+    <div class="page-title">
+      <div>
+        <h1>期现结合看板</h1>
+        <div class="desc">锁价 / 点价订单 · 套保头寸 · 基差 · PnL 三段拆分 · 数据时间 2026-05-27 15:00</div>
+      </div>
+      <div class="flex gap-12">
+        <select style="width:140px"><option>合约: HC2606</option><option>HC2610</option><option>RB2606</option></select>
+        <select style="width:140px"><option>主体: 全部合并</option><option>上海钢贸有限公司</option></select>
+        <button class="btn">📞 联系期货部</button>
+        <button class="btn primary">📤 导出</button>
+      </div>
+    </div>
+
+    <!-- 风险条 -->
+    <div class="alert-strip">
+      <div class="ic">⚠️</div>
+      <div style="flex:1;">
+        <div><b>已锁价未对冲 580 吨</b> · 单边价格敞口 ≈ ¥2.32 万/吨变动 · 建议立即对冲</div>
+        <div class="muted" style="font-size:12px">3 张锁价单未对应建立期货空头, 涉及客户 江某机械 / 南某五金 / 无某建工</div>
+      </div>
+      <button class="btn primary sm">📈 一键对冲</button>
+      <button class="btn sm">查看明细</button>
+    </div>
+
+    <!-- 顶部 PnL 三段 + 总览 -->
+    <div class="row-4 mb-16">
+      <div class="pnl-card pos">
+        <div class="ti">现货段 PnL</div>
+        <div class="vl pos">+¥8.6万</div>
+        <div class="sub">本周累计 · 含挂牌毛利与已实现销售</div>
+      </div>
+      <div class="pnl-card neg">
+        <div class="ti">期货段 PnL</div>
+        <div class="vl neg">-¥5.4万</div>
+        <div class="sub">已实现 -2.8万 · 浮动 -2.6万</div>
+      </div>
+      <div class="pnl-card pos">
+        <div class="ti">基差贡献 PnL</div>
+        <div class="vl pos">+¥1.8万</div>
+        <div class="sub">基差走窄 18 元/吨 × 1,000 吨</div>
+      </div>
+      <div class="pnl-card pos">
+        <div class="ti">期现总 PnL</div>
+        <div class="vl pos" style="font-size:28px">+¥5.0万</div>
+        <div class="sub">综合毛利率 <b style="color:var(--success)">3.8%</b> · 套保有效</div>
+      </div>
+    </div>
+
+    <!-- 主图: 基差 + 现期价 -->
+    <div class="row mb-16" style="display:grid; grid-template-columns: 2fr 1fr; gap: 16px;">
+      <div class="card">
+        <div class="card-h">
+          <h3>📈 HC2606 · 现货 / 期货 / 基差 (近 30 天)</h3>
+          <div class="tools">
+            <span class="tag muted">现货</span>
+            <span class="tag">期货</span>
+            <span class="tag info">基差 (右轴)</span>
+          </div>
+        </div>
+        <div class="card-b"><div id="ch_main" class="chart chart-lg"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>🎯 套保头寸 · 按合约月</h3></div>
+        <div class="card-b no-pad">
+          <table class="tb">
+            <thead><tr><th>合约</th><th class="num">多头</th><th class="num">空头</th><th class="num">净持仓</th><th class="num">PnL</th></tr></thead>
+            <tbody>
+              <tr><td>HC2606 (近月)</td><td class="num">0</td><td class="num">-3,200</td><td class="num down">-3,200</td><td class="num down">-¥2.8万</td></tr>
+              <tr><td>HC2610</td><td class="num">0</td><td class="num">-1,800</td><td class="num down">-1,800</td><td class="num down">-¥1.4万</td></tr>
+              <tr><td>RB2606</td><td class="num">0</td><td class="num">-2,400</td><td class="num down">-2,400</td><td class="num down">-¥1.2万</td></tr>
+              <tr><td>I2606 (铁矿)</td><td class="num">+800</td><td class="num">0</td><td class="num up">+800</td><td class="num up">+¥0.4万</td></tr>
+              <tr><td colspan="3"><b>保证金占用</b></td><td colspan="2" class="num bold">¥820 万</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 锁价订单 + 点价订单 -->
+    <div class="row-2 mb-16">
+      <div class="card">
+        <div class="card-h">
+          <h3>🔒 锁价订单 · 进行中 (8 单)</h3>
+          <div class="tools"><a>全部 →</a></div>
+        </div>
+        <div class="card-b no-pad">
+          <table class="tb">
+            <thead><tr><th>订单</th><th>客户</th><th class="num">锁价</th><th class="num">吨</th><th>对冲状态</th></tr></thead>
+            <tbody>
+              <tr><td>LO-20260520-088</td><td>江某机械</td><td class="num">¥4,180</td><td class="num">280</td><td><span class="tag danger">未对冲</span></td></tr>
+              <tr><td>LO-20260522-103</td><td>南某五金</td><td class="num">¥4,160</td><td class="num">200</td><td><span class="tag danger">未对冲</span></td></tr>
+              <tr><td>LO-20260524-117</td><td>无某建工</td><td class="num">¥4,200</td><td class="num">100</td><td><span class="tag warning">部分</span></td></tr>
+              <tr><td>LO-20260518-066</td><td>常州某重型</td><td class="num">¥4,150</td><td class="num">320</td><td><span class="tag success">已对冲</span></td></tr>
+              <tr><td>LO-20260515-051</td><td>苏州某制品</td><td class="num">¥4,180</td><td class="num">450</td><td><span class="tag success">已对冲</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h">
+          <h3>📊 点价订单 · 待点价 (12 单)</h3>
+          <div class="tools"><a>全部 →</a></div>
+        </div>
+        <div class="card-b no-pad">
+          <table class="tb">
+            <thead><tr><th>订单</th><th>客户</th><th class="num">总吨</th><th class="num">已点</th><th>到期</th></tr></thead>
+            <tbody>
+              <tr><td>SP-20260512-014</td><td>江某机械</td><td class="num">500</td><td class="num">280</td><td><span class="tag warning">6/15 (剩 18天)</span></td></tr>
+              <tr><td>SP-20260516-022</td><td>南某五金</td><td class="num">400</td><td class="num">120</td><td><span class="tag">6/30</span></td></tr>
+              <tr><td>SP-20260518-027</td><td>张家港某物流</td><td class="num">800</td><td class="num">0</td><td><span class="tag danger">5/30 (剩 2天)</span></td></tr>
+              <tr><td>SP-20260520-031</td><td>湖州某加工</td><td class="num">300</td><td class="num">200</td><td><span class="tag">6/20</span></td></tr>
+              <tr><td>SP-20260522-038</td><td>常州某机电</td><td class="num">600</td><td class="num">400</td><td><span class="tag">7/5</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 基差历史 + 净敞口 -->
+    <div class="row-2">
+      <div class="card">
+        <div class="card-h">
+          <h3>📏 基差走势 · 近 60 天</h3>
+          <div class="tools"><span class="muted">基差 = 现货价 - 期货价</span></div>
+        </div>
+        <div class="card-b"><div id="ch_basis" class="chart"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-h">
+          <h3>⚖️ 套保后净敞口 · 累计 14 天</h3>
+          <div class="tools">
+            <span class="tag muted">现货持仓</span>
+            <span class="tag">期货空头</span>
+            <span class="tag danger">净敞口</span>
+          </div>
+        </div>
+        <div class="card-b"><div id="ch_exp" class="chart"></div></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="./assets/layout.js"></script>
+<script>
+  const dates = Array.from({length:30}, (_,i) => `5/${i+1}`);
+
+  // 现期 + 基差
+  echarts.init(document.getElementById('ch_main')).setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { top: 4 },
+    grid: { left: 50, right: 70, top: 40, bottom: 30 },
+    xAxis: { type:'category', data: dates },
+    yAxis: [
+      { type:'value', name:'价格(元/吨)' },
+      { type:'value', name:'基差(元/吨)', position:'right', splitLine: {show:false} },
+    ],
+    series: [
+      { name:'现货价', type:'line', data: [4080, 4090, 4100, 4080, 4110, 4120, 4130, 4150, 4160, 4180, 4190, 4180, 4200, 4220, 4210, 4180, 4150, 4130, 4140, 4170, 4180, 4200, 4180, 4150, 4130, 4140, 4160, 4170, 4180, 4180], smooth:true, lineStyle:{width:2.5, color:'#1677ff'}, symbol:'none' },
+      { name:'期货价', type:'line', data: [4060, 4080, 4090, 4080, 4120, 4130, 4140, 4150, 4170, 4190, 4200, 4200, 4210, 4220, 4230, 4220, 4200, 4180, 4170, 4180, 4190, 4220, 4210, 4180, 4170, 4200, 4220, 4230, 4240, 4240], smooth:true, lineStyle:{width:2, type:'dashed', color:'#fa8c16'}, symbol:'none' },
+      { name:'基差', type:'bar', yAxisIndex:1, data: [20, 10, 10, 0, -10, -10, -10, 0, -10, -10, -10, -20, -10, 0, -20, -40, -50, -50, -30, -10, -10, -20, -30, -30, -40, -60, -60, -60, -60, -60], itemStyle: {color: (p)=> p.value > 0 ? '#52c41a55' : '#f5222d55' }, barWidth: 6 },
+    ],
+  });
+
+  // 基差走势
+  echarts.init(document.getElementById('ch_basis')).setOption({
+    tooltip: { trigger:'axis' },
+    grid: { left: 50, right: 30, top: 30, bottom: 30 },
+    xAxis: { type:'category', data: Array.from({length: 60}, (_,i) => 60-i+' 天前').reverse() },
+    yAxis: { type:'value', axisLabel: { formatter: '{value}' } },
+    visualMap: { type:'piecewise', show: false, pieces: [{gt:0, color:'#52c41a'}, {lt:0, color:'#f5222d'}] },
+    series: [{ type:'bar', data: Array.from({length: 60}, (_,i) => {
+        const x = i / 60;
+        return Math.round(80 - x * 120 + Math.sin(x*7)*20 - 30 * Math.max(0, x - 0.6));
+      }), barWidth: 5 }],
+  });
+
+  // 净敞口
+  echarts.init(document.getElementById('ch_exp')).setOption({
+    tooltip: { trigger:'axis', axisPointer: { type:'shadow' } },
+    legend: { top: 4 },
+    grid: { left: 60, right: 30, top: 40, bottom: 30 },
+    xAxis: { type:'category', data: Array.from({length:14},(_,i)=>`5/${i+14}`) },
+    yAxis: { type:'value', axisLabel: { formatter: '{value} 吨' } },
+    series: [
+      { name:'现货持仓', type:'bar', data: [9800,9600,9900,10100,10200,10400,10500,10300,10500,10800,11000,11200,11000,10800], itemStyle: {color:'#1677ff'}, stack: null, barWidth: 16 },
+      { name:'期货空头', type:'bar', data: [-9500,-9400,-9700,-9800,-10000,-10200,-10200,-10000,-10100,-10400,-10500,-10500,-10300,-10000], itemStyle: {color:'#fa8c16'}, stack: null, barWidth: 16 },
+      { name:'净敞口', type:'line', data: [300,200,200,300,200,200,300,300,400,400,500,700,700,800], lineStyle:{color:'#f5222d', width: 2.5}, itemStyle:{color:'#f5222d'} },
+    ],
+  });
+</script>
+</body>
+</html>

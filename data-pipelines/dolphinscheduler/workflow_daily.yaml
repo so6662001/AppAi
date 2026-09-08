@@ -1,0 +1,78 @@
+# =====================================================================
+# DolphinScheduler 3.x 工作流定义 - 钢铁 AI 平台每日 ETL
+#
+# 导入: dolphinscheduler-cli 或在 UI 上手动创建工作流并粘贴节点
+# 调度: 每天 23:30 触发, 完成后 next day 早报有数
+# =====================================================================
+name: steel_daily_etl
+description: "钢铁 AI 平台每日 ETL: CDC同步 → DWS聚合 → 库存快照 → 早报生成"
+schedule:
+  cron: "0 30 23 * * ? *"          # 每天 23:30
+  timezone: Asia/Shanghai
+tenants: [default]
+
+global_params:
+  - { name: BIZ_DATE,  type: VARCHAR, value: "$[yyyy-MM-dd-1]" }   # 昨日
+  - { name: TENANT_ID, type: VARCHAR, value: "1" }
+
+tasks:
+
+  # ============ 1. SeaTunnel CDC 增量同步 (并行) ============
+  - { name: sync_sales_orders,
+      type: SHELL,
+      command: "seatunnel.sh --config /opt/etl/sales_orders.conf -i TENANT_ID=${TENANT_ID}" }
+
+  - { name: sync_inventory_balance,
+      type: SHELL,
+      command: "seatunnel.sh --config /opt/etl/inventory_balance.conf -i TENANT_ID=${TENANT_ID}" }
+
+  - { name: sync_inventory_movement,
+      type: SHELL,
+      command: "seatunnel.sh --config /opt/etl/inventory_movement.conf -i TENANT_ID=${TENANT_ID}" }
+
+  - { name: sync_work_order,
+      type: SHELL,
+      command: "seatunnel.sh --config /opt/etl/work_order.conf -i TENANT_ID=${TENANT_ID}" }
+
+  - { name: sync_quality_inspection,
+      type: SHELL,
+      command: "seatunnel.sh --config /opt/etl/quality_inspection.conf -i TENANT_ID=${TENANT_ID}" }
+
+  - { name: sync_purchase_orders,
+      type: SHELL,
+      command: "seatunnel.sh --config /opt/etl/purchase_orders.conf -i TENANT_ID=${TENANT_ID}" }
+
+  # ============ 2. 库存日快照 (依赖入库完成) ============
+  - { name: inv_daily_snapshot,
+      type: HTTP,
+      url: "http://etl-runner:8700/internal/run/inv_daily_snapshot",
+      method: POST,
+      deps: [sync_inventory_balance, sync_inventory_movement] }
+
+  # ============ 3. 风控扫描 ============
+  - { name: risk_scan,
+      type: HTTP,
+      url: "http://risk-alert-service:8300/internal/scan-now",
+      method: POST,
+      deps: [sync_sales_orders] }
+
+  # ============ 4. 行动建议扫描 ============
+  - { name: advice_scan,
+      type: HTTP,
+      url: "http://advice-engine:8600/internal/scan-now",
+      method: POST,
+      deps: [inv_daily_snapshot, risk_scan] }
+
+  # ============ 5. 早报生成 (依赖所有上游, 凌晨 5 点) ============
+  - { name: briefing_generate,
+      type: HTTP,
+      url: "http://briefing-service:8500/internal/generate-now",
+      method: POST,
+      deps: [advice_scan] }
+
+failure_strategy: CONTINUE     # 单个任务失败不中断后续
+retry: 3
+retry_interval: 300            # 5 分钟
+notify:
+  on_failure: [钉钉群机器人, 邮件]
+sla: 4h                        # 整个工作流 4 小时内必须完成, 否则告警

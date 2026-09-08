@@ -1,0 +1,45 @@
+pack_id: PK_TRADE_FINANCE_STAFF
+name: 财务专员包-钢贸
+description: 应收对账日常, 不看毛利/净利等敏感字段
+business_line: TRADE
+role_code: FINANCE_STAFF
+
+metrics:
+  - sales_amount
+  - delivery_value
+  - ar_outstanding
+  - ar_overdue_amount
+  - dso
+  - ap_outstanding
+  - dpo
+  - credit_utilization_rate
+  - ar_aging_overdue_rate
+
+summary_kpis:
+  - ar_outstanding
+  - ar_overdue_amount
+  - dso
+  - ap_outstanding
+
+briefing_cards: [SUMMARY, INSIGHT]
+
+recommended_questions:
+  - 本周新增逾期客户
+  - 逾期超 30 天的应收
+  - 各业务员应收对账
+  - 本月开票总额
+  - 哪些客户接近授信上限
+  - 应付账款周转
+  - 上月对账差异
+  - 本月新增坏账
+  - 应收账龄分析
+  - 客户付款规律 Top5
+
+default_subscriptions:
+  - TPL_FINANCE_WEEKLY_AR
+default_dashboard: /pages/dashboard/finance
+
+column_masking:
+  - { table: dws_sales_daily, field: gross_profit,  visibility: HIDDEN }
+  - { table: dws_sales_daily, field: gross_margin,  visibility: HIDDEN }
+  - { table: dws_sales_daily, field: cost_amount,   visibility: HIDDEN }

@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>我的画像 · 销售部经理</title>
+<link rel="stylesheet" href="./assets/shared.css">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  .mgr-hero {
+    background: linear-gradient(135deg, #003a8c 0%, #0958d9 50%, #1677ff 100%);
+    color: #fff; padding: 28px; border-radius: 14px;
+    display: grid; grid-template-columns: 200px 1fr 320px; gap: 28px; align-items: center;
+    box-shadow: var(--shadow-md); margin-bottom: 16px;
+  }
+  .ring-large {
+    width: 160px; height: 160px; border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(0,0,0,.25) 60%, transparent 61% 100%),
+      conic-gradient(#faad14 0% 72%, rgba(255,255,255,.18) 72% 100%);
+    display: grid; place-items: center; margin: 0 auto;
+  }
+  .ring-large .v { font-size: 52px; font-weight: 800; }
+  .ring-large .s { font-size: 12px; color: #d6e4ff; }
+
+  /* 团队成员卡 */
+  .team-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
+  }
+  .member {
+    background: #fff; border-radius: 8px; padding: 14px;
+    text-align: center; border: 1px solid var(--border);
+    cursor: pointer; position: relative; transition: all .15s;
+  }
+  .member:hover { border-color: var(--primary); transform: translateY(-2px); }
+  .member.top { border-color: #faad14; background: linear-gradient(180deg, #fff7e6, #fff); }
+  .member.at-risk { border-color: var(--danger); background: linear-gradient(180deg, #fff1f0, #fff); }
+  .member .av {
+    width: 60px; height: 60px; border-radius: 50%; margin: 0 auto;
+    display: grid; place-items: center;
+    color: #fff; font-weight: 700; font-size: 22px;
+    background: linear-gradient(135deg, #1677ff, #722ed1);
+    position: relative;
+  }
+  .member.top .av { background: linear-gradient(135deg, #faad14, #fa541c); }
+  .member.at-risk .av { background: linear-gradient(135deg, #f5222d, #722ed1); }
+  .member .av .badge {
+    position: absolute; top: -4px; right: -8px;
+    background: var(--warning); color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 10px; border: 2px solid #fff;
+  }
+  .member .av .badge.top { background: var(--success); }
+  .member .av .badge.bad { background: var(--danger); }
+  .member .nm { font-weight: 600; font-size: 13px; margin-top: 8px; }
+  .member .health { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+  .member .health.bad { color: var(--danger); }
+  .member .health.good { color: var(--success); }
+  .member .stat { font-size: 11px; margin-top: 8px; padding: 6px 0; background: #fafbfc; border-radius: 4px; }
+  .member .stat b { font-size: 13px; }
+
+  /* finding */
+  .finding { background: #fff; border-left: 4px solid var(--border); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; }
+  .finding.HIGH { border-left-color: var(--danger); }
+  .finding.MEDIUM { border-left-color: var(--warning); }
+  .finding.LOW { border-left-color: var(--success); }
+  .finding .h { display: flex; gap: 10px; align-items: center; }
+  .finding .h .cat { font-size: 10px; padding: 1px 7px; border-radius: 4px; font-weight: 600; }
+  .finding .h .cat.RISK { background:#fff1f0; color:var(--danger); }
+  .finding .h .cat.WEAKNESS { background:#fff7e6; color:var(--warning); }
+  .finding .h .cat.OPPORTUNITY { background:#e6fffb; color:var(--info); }
+  .finding .h .ti { font-weight: 600; font-size: 14px; }
+  .finding .h .imp { margin-left: auto; font-size: 11px; color: var(--text-3); }
+  .finding .desc { font-size: 12px; color: var(--text-2); margin-top: 6px; line-height: 1.6; }
+  .finding .desc b { color: var(--text); }
+  .finding .impact { background: #fff7e6; padding: 6px 10px; border-radius: 4px; font-size: 12px; color: var(--text-2); margin-top: 8px; }
+  .finding .impact b { color: var(--warning); }
+  .finding .actions { display: flex; gap: 6px; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="app-shell" data-active="role-insight-sales-mgr.html" data-crumbs="人与提成 <span class=&quot;sep&quot;>/</span> <span class=&quot;cur&quot;>我的画像 · 销售部经理</span>" data-user="陈某" data-role="销售部经理 · 华东大区"></div>
+
+  <main class="main">
+
+    <!-- HERO -->
+    <div class="mgr-hero">
+      <div>
+        <div class="ring-large">
+          <div style="text-align: center;"><div class="v">68</div><div class="s">/ 100 · B 良好</div></div>
+        </div>
+        <div style="text-align: center; margin-top: 12px;">
+          <span class="tag" style="background: rgba(255,255,255,.2); color:#fff; border-color: rgba(255,255,255,.3);">📈 比上月 +5</span>
+        </div>
+      </div>
+
+      <div>
+        <div style="color:#d6e4ff; font-size:13px;">2026-05-28 · 销售部经理画像 · 团队 5 人</div>
+        <h2 style="margin:6px 0 14px; font-size:24px; font-weight:700;">陈经理, 您团队本月健康度 68 分</h2>
+        <div style="background: rgba(255,255,255,.08); padding: 14px; border-radius: 8px; line-height: 1.8; font-size: 13px;">
+          您团队整体 <b style="color:#ffd591;">中等偏好 (B)</b>, 但有 <b style="color:#ff7875;">2 个紧急问题</b>:
+          <ul style="margin: 8px 0 0 0; padding-left: 18px; color: #d6e4ff;">
+            <li>Top1 王某本月销售 -28% (江某机械暂停下单)</li>
+            <li>团队 2 个销售员健康度连续 2 月 &lt; 50 (流失风险)</li>
+            <li>团队吨毛利 168 元/吨, 公司均值 186 (-10%)</li>
+          </ul>
+        </div>
+      </div>
+
+      <div>
+        <div style="color:#d6e4ff; font-size:13px; margin-bottom: 12px;">📊 团队 KPI vs 公司</div>
+        <div id="ch_radar" style="height: 220px"></div>
+      </div>
+    </div>
+
+    <!-- 团队成员 5 人卡 -->
+    <div class="card mb-16">
+      <div class="card-h">
+        <h3>👥 我的团队 · 5 个销售员 (点击查看个人画像)</h3>
+        <div class="tools">
+          <span class="tag warning">2 流失风险</span>
+          <span class="tag success">1 Top</span>
+          <button class="btn sm">📋 团队报表</button>
+        </div>
+      </div>
+      <div class="card-b">
+        <div class="team-grid">
+
+          <div class="member top">
+            <div class="av">王 <div class="badge top">⭐</div></div>
+            <div class="nm">王某</div>
+            <div class="health good">健康度 82 · A</div>
+            <div class="stat">本月毛利<br><b>¥24,800</b></div>
+            <div class="stat" style="background: #fff1f0;">环比 <b style="color:var(--danger)">-28%</b></div>
+          </div>
+
+          <div class="member">
+            <div class="av">陈</div>
+            <div class="nm">陈某</div>
+            <div class="health good">健康度 75 · B</div>
+            <div class="stat">本月毛利<br><b>¥18,600</b></div>
+            <div class="stat">环比 <b style="color:var(--success)">+8%</b></div>
+          </div>
+
+          <div class="member">
+            <div class="av">李</div>
+            <div class="nm">李某</div>
+            <div class="health">健康度 62 · C</div>
+            <div class="stat">本月毛利<br><b>¥14,100</b></div>
+            <div class="stat">环比 <b style="color:var(--success)">+3%</b></div>
+          </div>
+
+          <div class="member at-risk">
+            <div class="av">林 <div class="badge bad">⚠</div></div>
+            <div class="nm">林某</div>
+            <div class="health bad">健康度 42 · D · 连续 2 月</div>
+            <div class="stat">本月毛利<br><b>¥8,400</b></div>
+            <div class="stat" style="background: #fff1f0;">老应收 <b style="color:var(--danger)">¥28万</b></div>
+          </div>
+
+          <div class="member at-risk">
+            <div class="av">钱 <div class="badge bad">⚠</div></div>
+            <div class="nm">钱某</div>
+            <div class="health bad">健康度 38 · D · 连续 2 月</div>
+            <div class="stat">本月毛利<br><b>¥6,200</b></div>
+            <div class="stat" style="background: #fff1f0;">客户 <b style="color:var(--danger)">仅 2 个</b></div>
+          </div>
+
+        </div>
+        <div style="background: #fafbfc; padding: 12px 16px; margin-top: 12px; border-radius: 6px; font-size: 12px; color: var(--text-2);">
+          📊 团队总销售额 <b>¥682 万</b> · 加权吨毛利 <b>¥168</b> · 活跃客户 <b>38 个</b> · 人均提成 <b>¥12,400</b>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7 项 finding + AI 团队教练 -->
+    <div class="row mb-16" style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px;">
+
+      <div class="card">
+        <div class="card-h">
+          <h3>📋 本月 7 个改进点 (按 AI 评分排序)</h3>
+          <div class="tools">
+            <button class="btn sm primary">全部 7 项</button>
+            <button class="btn sm">高 2</button>
+            <button class="btn sm">中 4</button>
+            <button class="btn sm">机会 1</button>
+          </div>
+        </div>
+        <div class="card-b">
+
+          <div class="finding HIGH">
+            <div class="h">
+              <span class="sev HIGH"></span>
+              <span class="cat RISK">RISK</span>
+              <span class="ti">团队 Top 销售员业绩骤降</span>
+              <span class="imp">-18 分</span>
+            </div>
+            <div class="desc"><b>王某</b> 是您团队 Top 1, 本月销售环比 <b>-28%</b>, 主要因 <b>Top1 客户江某机械暂停下单</b></div>
+            <div class="impact">💡 Top1 占团队 <b>32%</b>, 若不挽回下月团队营收预计 <b>-¥190 万</b></div>
+            <div class="actions">
+              <button class="btn primary sm">📅 立即 1v1 沟通</button>
+              <button class="btn sm">看王某画像</button>
+              <button class="btn sm">💬 AI 出挽回方案</button>
+            </div>
+          </div>
+
+          <div class="finding HIGH">
+            <div class="h">
+              <span class="sev HIGH"></span>
+              <span class="cat WEAKNESS">WEAKNESS</span>
+              <span class="ti">团队吨毛利低于公司均值</span>
+              <span class="imp">-16 分</span>
+            </div>
+            <div class="desc">您团队加权吨毛利 <b>¥168/吨</b>, 公司均值 <b>¥186/吨</b>, 差距 <b>10%</b></div>
+            <div class="impact">💡 若达公司均值, 团队月毛利可多 <b>¥124,000</b> (团队提成池涨 ¥28,000)</div>
+            <div class="actions">
+              <button class="btn primary sm">💬 AI 拆销售员差异</button>
+              <button class="btn sm">看销售员排行</button>
+            </div>
+          </div>
+
+          <div class="finding MEDIUM">
+            <div class="h">
+              <span class="sev MEDIUM"></span>
+              <span class="cat RISK">RISK</span>
+              <span class="ti">团队人员存在流失风险</span>
+              <span class="imp">-12 分</span>
+            </div>
+            <div class="desc">团队中 <b>林某 + 钱某</b> 健康度连续 2 月 &lt; 50, 流失风险评分 <b>38%</b></div>
+            <div class="impact">💡 若流失, 客户交接 + 培养新人成本约 <b>¥80,000 / 人</b></div>
+            <div class="actions">
+              <button class="btn primary sm">看高风险员工</button>
+              <button class="btn sm">💬 AI 提改善建议</button>
+            </div>
+          </div>
+
+          <div class="finding MEDIUM">
+            <div class="h">
+              <span class="sev MEDIUM"></span>
+              <span class="cat RISK">RISK</span>
+              <span class="ti">团队老应收增长过快</span>
+              <span class="imp">-12 分</span>
+            </div>
+            <div class="desc">团队 181+ 应收环比 <b>+22%</b> (¥48 万), 集中在 <b>林某 / 钱某</b></div>
+            <div class="impact">💡 潜在坏账 <b>¥144,000</b>, 影响您年终考核 + 团队提成池</div>
+            <div class="actions">
+              <button class="btn primary sm">启动催收专项</button>
+              <button class="btn sm">按销售员拆账龄</button>
+            </div>
+          </div>
+
+          <div class="finding MEDIUM">
+            <div class="h">
+              <span class="sev MEDIUM"></span>
+              <span class="cat RISK">RISK</span>
+              <span class="ti">团队客户高度集中</span>
+              <span class="imp">-10 分</span>
+            </div>
+            <div class="desc">Top 5 客户占团队营收 <b>68%</b> (¥464 万)</div>
+            <div class="impact">💡 若 Top1 客户停单, 团队下月营收预计 <b>-¥190 万</b></div>
+            <div class="actions">
+              <button class="btn primary sm">看客户分布</button>
+              <button class="btn sm">💬 AI 推荐新客户</button>
+            </div>
+          </div>
+
+          <div class="finding MEDIUM">
+            <div class="h">
+              <span class="sev MEDIUM"></span>
+              <span class="cat WEAKNESS">WEAKNESS</span>
+              <span class="ti">团队提成差异过大 (Top/Bot 6 倍)</span>
+              <span class="imp">-8 分</span>
+            </div>
+            <div class="desc">团队 Top 提成 <b>¥24,800</b>, Bottom <b>¥4,000</b>, 倍数 <b>6.2x</b></div>
+            <div class="impact">💡 后进员工容易流失, 团队稳定性差</div>
+            <div class="actions">
+              <button class="btn primary sm">看后 30% 销售员</button>
+              <button class="btn sm">安排针对性辅导</button>
+            </div>
+          </div>
+
+          <div class="finding LOW">
+            <div class="h">
+              <span class="sev LOW"></span>
+              <span class="cat OPPORTUNITY">OPPORTUNITY</span>
+              <span class="ti">团队新客户开发停滞</span>
+              <span class="imp">-8 分</span>
+            </div>
+            <div class="desc">本季团队 5 人, 仅新增 <b>4 个</b>客户, 人均 <b>0.8 个</b></div>
+            <div class="impact">💡 客户池缩水, 6 个月后预计营收下滑 <b>¥320,000</b></div>
+            <div class="actions">
+              <button class="btn primary sm">看每人新客户数</button>
+              <button class="btn sm">💬 AI 推荐潜在客户清单</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="col">
+        <!-- AI 团队教练 -->
+        <div class="card">
+          <div class="card-h">
+            <h3>🤖 AI 团队管理参谋</h3>
+            <div class="tools"><span class="tag info">DeepSeek</span></div>
+          </div>
+          <div class="card-b">
+            <div style="background: #f0f5ff; padding: 14px; border-radius: 8px; font-size: 13px; line-height: 1.8;">
+              陈经理, 您团队需要 <b>抓 2 个紧急</b>:<br>
+              1. <b>本周内挽回王某 Top1 客户</b> · 否则下月团队营收掉 28%<br>
+              2. <b>1v1 谈林某 / 钱某</b> · 这是您能否带稳团队的关键<br>
+              <br>
+              建议:<br>
+              · 把客户 [江某机械] 临时转给陈某接手, 同时让王某专注新机会<br>
+              · 给林某/钱某 <b>客户分担 + 培养专项</b>, 不要直接淘汰<br>
+              · 下季度调整客户分配, 避免 Top1 占 32%
+            </div>
+            <div class="flex gap-8 mt-12">
+              <button class="btn primary sm">📋 生成本周工作清单</button>
+              <button class="btn sm">💬 详细讨论</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6 月趋势 -->
+        <div class="card">
+          <div class="card-h"><h3>📈 团队 6 月健康度</h3></div>
+          <div class="card-b"><div id="ch_trend" class="chart" style="height: 220px"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 客户结构 + Top 销售员 -->
+    <div class="row-2">
+      <div class="card">
+        <div class="card-h"><h3>🥧 团队客户结构 · Top 5 + 其他</h3></div>
+        <div class="card-b"><div id="ch_cust" class="chart" style="height: 280px"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>🏆 5 个销售员 · 综合贡献</h3></div>
+        <div class="card-b"><div id="ch_rep" class="chart" style="height: 280px"></div></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="./assets/layout.js"></script>
+<script>
+  // 团队 KPI 雷达
+  echarts.init(document.getElementById('ch_radar')).setOption({
+    radar: {
+      indicator: [
+        { name: '团队营收', max: 100 },
+        { name: '吨毛利', max: 100 },
+        { name: '活跃客户', max: 100 },
+        { name: '员工稳定', max: 100 },
+        { name: '新客户', max: 100 },
+      ],
+      shape: 'polygon',
+      splitArea: { areaStyle: { color: ['transparent','rgba(255,255,255,.05)'] } },
+      splitLine: { lineStyle: { color: 'rgba(255,255,255,.2)' } },
+      axisLine: { lineStyle: { color: 'rgba(255,255,255,.2)' } },
+      axisName: { color: '#d6e4ff', fontSize: 11 },
+      center: ['50%', '52%'], radius: '70%',
+    },
+    series: [{
+      type:'radar',
+      data: [
+        { value: [72, 65, 70, 50, 45], name:'我团队', areaStyle: {opacity: 0.35, color: '#faad14'}, lineStyle:{color:'#ffd591', width:2}, itemStyle:{color:'#ffd591'} },
+        { value: [65, 65, 65, 70, 65], name:'公司均', areaStyle: {opacity: 0.15, color: '#fa8c16'}, lineStyle:{color:'#fa8c16', type:'dashed'}, itemStyle:{color:'#fa8c16'} },
+      ],
+    }],
+  });
+
+  // 6 月趋势
+  echarts.init(document.getElementById('ch_trend')).setOption({
+    tooltip: { trigger: 'axis' },
+    grid: { left: 40, right: 30, top: 20, bottom: 30 },
+    xAxis: { type:'category', data: ['12月','1月','2月','3月','4月','5月'] },
+    yAxis: { type:'value', min: 50, max: 100 },
+    series: [
+      { type:'line', smooth: true, data: [55, 58, 62, 60, 63, 68], itemStyle:{color:'#1677ff'}, lineStyle:{width:3}, areaStyle:{color:'rgba(22,119,255,.2)'}, name:'团队健康度' },
+    ],
+  });
+
+  // 客户结构
+  echarts.init(document.getElementById('ch_cust')).setOption({
+    tooltip: { trigger: 'item' },
+    legend: { bottom: 0, type: 'scroll' },
+    series: [{
+      type:'pie', radius: ['40%','70%'], top: -10,
+      data: [
+        { value: 218, name: '江某机械 (王某)' },
+        { value: 132, name: '苏州某制品 (陈某)' },
+        { value: 60, name: '湖州某加工 (李某)' },
+        { value: 38, name: '无某建工 (王某)' },
+        { value: 16, name: '常州某重型 (陈某)' },
+        { value: 218, name: '其他 33 个客户' },
+      ],
+      label: { formatter: '{b}\n{d}%', fontSize: 11 },
+    }],
+  });
+
+  // 5 个销售员综合贡献
+  echarts.init(document.getElementById('ch_rep')).setOption({
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    legend: { top: 4 },
+    grid: { left: 60, right: 30, top: 40, bottom: 30 },
+    xAxis: { type: 'category', data: ['钱某','林某','李某','陈某','王某'] },
+    yAxis: [
+      { type:'value', name:'毛利(万)', axisLabel:{formatter:'¥{value}万'} },
+      { type:'value', name:'健康度', position:'right', max:100, splitLine:{show:false} },
+    ],
+    series: [
+      { name: '毛利', type: 'bar', data: [6.2,8.4,14.1,18.6,24.8],
+        itemStyle:{color:'#1677ff'}, barWidth: 24, label:{show:true,position:'top',formatter:'¥{c}万',fontSize:11} },
+      { name: '健康度', type:'line', yAxisIndex:1, data:[38,42,62,75,82], smooth:true,
+        lineStyle:{width:2,color:'#52c41a'}, itemStyle:{color:'#52c41a'} },
+    ],
+  });
+</script>
+</body>
+</html>
