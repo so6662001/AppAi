@@ -331,6 +331,10 @@ namespace SteelGuard.Tests
         [InlineData("AutoHotkey64", ProcessCategory.Automation)]
         [InlineData("PAD.Console.Host", ProcessCategory.Automation)]
         [InlineData("openclaw", ProcessCategory.Automation)]
+        [InlineData("WorkBuddy", ProcessCategory.Automation)]           // 腾讯"龙虾"
+        [InlineData("WorkBuddy Helper (Renderer)", ProcessCategory.Automation)]
+        [InlineData("windows-bridge", ProcessCategory.Automation)]      // pi-computer-use 的 UIA 桥
+        [InlineData("CodeBuddy", ProcessCategory.Automation)]
         [InlineData("ToDesk", ProcessCategory.RemoteControl)]
         [InlineData("SunloginClient", ProcessCategory.RemoteControl)]
         [InlineData("nvda", ProcessCategory.Accessibility)]

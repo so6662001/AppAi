@@ -259,8 +259,9 @@ namespace SteelGuard.AntiRpa.Windows.Protection
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
-            if (!(ShowVisibleWatermark || Sensitivity >= DataSensitivity.Confidential)) return;
             var g = Guard;
+            var forcedByRemote = g != null && g.Engine.RemoteSession && g.Policy.RemoteSessionForceVisibleWatermark;
+            if (!(ShowVisibleWatermark || forcedByRemote || Sensitivity >= DataSensitivity.Confidential)) return;
             var text = g != null ? $"{g.Options.UserName} {g.Options.UserId} {DateTime.Now:MM-dd HH:mm}" : "内部资料";
             using var font = new Font(Font.FontFamily, 14f, FontStyle.Bold);
             using var brush = new SolidBrush(Color.FromArgb(22, 60, 60, 60));

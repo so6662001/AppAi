@@ -48,22 +48,39 @@ namespace SteelGuard.AntiRpa.Windows.Detection
             PollVm();
         }
 
-        public static IEnumerable<string> EnumerateProcessNames()
+        /// <summary>
+        /// 枚举进程名。默认只看 *当前登录会话* 的进程:RDS / 终端服务器上多个用户共用一台机器,
+        /// 不能因为别的会话里有人跑 RPA 就把本用户判为高风险。
+        /// </summary>
+        public static IEnumerable<string> EnumerateProcessNames(bool currentSessionOnly = true)
         {
             Process[] ps;
-            try { ps = Process.GetProcesses(); } catch { yield break; }
+            int mySession;
+            try
+            {
+                ps = Process.GetProcesses();
+                mySession = Process.GetCurrentProcess().SessionId;
+            }
+            catch { yield break; }
             foreach (var p in ps)
             {
                 string? n = null;
-                try { n = p.ProcessName; } catch { /* 已退出 */ }
+                try
+                {
+                    if (!currentSessionOnly || p.SessionId == mySession) n = p.ProcessName;
+                }
+                catch { /* 已退出 / 无权限 */ }
                 finally { p.Dispose(); }
                 if (!string.IsNullOrEmpty(n)) yield return n!;
             }
         }
 
+        /// <summary>是否只扫描当前会话的进程(默认 true)。</summary>
+        public bool CurrentSessionOnly { get; set; } = true;
+
         private void PollProcesses()
         {
-            var names = EnumerateProcessNames().ToList();
+            var names = EnumerateProcessNames(CurrentSessionOnly).ToList();
             var hits = _matcher.Scan(names);
             var present = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 

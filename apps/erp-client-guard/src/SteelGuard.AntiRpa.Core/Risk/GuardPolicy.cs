@@ -83,6 +83,15 @@ namespace SteelGuard.AntiRpa.Core.Risk
         /// <summary>启用防截屏窗口属性。</summary>
         [JsonPropertyName("exclude_from_capture")] public bool ExcludeFromCapture { get; set; } = true;
 
+        /// <summary>
+        /// RDP / 远程会话中也启用防截屏属性。默认 false:远程桌面的画面本身就是"屏幕捕获",
+        /// 开启后合法用户在 RDP 客户端里看到的也是黑块。
+        /// </summary>
+        [JsonPropertyName("exclude_from_capture_in_remote_session")] public bool ExcludeFromCaptureInRemoteSession { get; set; } = false;
+
+        /// <summary>RDP / 远程会话中强制显示可见屏幕水印(无法阻止客户端侧截屏,只能保证截出来的图可追溯)。</summary>
+        [JsonPropertyName("remote_session_force_visible_watermark")] public bool RemoteSessionForceVisibleWatermark { get; set; } = true;
+
         /// <summary>无障碍模式:关闭 UIA 树隐藏(供视障员工使用)。</summary>
         [JsonPropertyName("accessibility_mode")] public bool AccessibilityMode { get; set; } = false;
 
@@ -172,8 +181,10 @@ namespace SteelGuard.AntiRpa.Core.Risk
                     "qmacro", "anjian", "keymouse", "mouserecorder", "tinytask", "macrorecorder",  // 按键精灵 / 录制回放
                     "autohotkey", "autohotkeyu64", "autohotkeyu32", "autohotkey64", "autoit3", "autoit3_x64",
                     "pywinauto", "pyautogui", "xdotool",
-                    // AI 电脑操控 Agent("龙虾" 系)
+                    // AI 电脑操控 Agent("龙虾" 系:OpenClaw / 腾讯 WorkBuddy 及其 Computer-Use 桥)
                     "openclaw", "clawdbot", "moltbot", "claw", "computer-use", "computeruse",
+                    "workbuddy", "tencent workbuddy", "codebuddy", "codebuddy-cli",
+                    "windows-bridge", "pi-computer-use", "pi-coding-agent",
                     "anthropic-computer-use", "openinterpreter", "open-interpreter",
                     "ui-tars", "uitars", "agent-s", "browser-use", "playwright", "puppeteer",
                 },

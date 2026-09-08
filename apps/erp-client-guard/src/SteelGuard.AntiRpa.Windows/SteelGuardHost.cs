@@ -141,13 +141,19 @@ namespace SteelGuard.AntiRpa.Windows
         }
 
         // ------------------------------------------------------------------
+        /// <summary>当前是否运行在 RDP / 远程会话中(所有输入都是注入、防截屏属性会把远程画面变黑)。</summary>
+        public bool IsRemoteSession => Native.NativeMethods.GetSystemMetrics(Native.NativeMethods.SM_REMOTESESSION) != 0;
+
         /// <summary>保护一个窗体:防截屏 + WM_GETOBJECT 探针 + 按等级隐藏 UIA 树。</summary>
         public void Protect(Form form)
         {
             if (form == null) throw new ArgumentNullException(nameof(form));
             if (_protected.Contains(form)) return;
             _protected.Add(form);
-            if (Policy.ExcludeFromCapture) ScreenCaptureGuard.Apply(form, true);
+            // RDP 会话中 WDA_EXCLUDEFROMCAPTURE 会让远程客户端看到黑块(合法用户也看不见),
+            // 只有策略明确允许时才在远程会话里启用。
+            if (Policy.ExcludeFromCapture && (!IsRemoteSession || Policy.ExcludeFromCaptureInRemoteSession))
+                ScreenCaptureGuard.Apply(form, true);
             UiaProbe.Attach(form);
             form.FormClosed += (_, __) => _protected.Remove(form);
             ApplyLevel(Engine.Level);

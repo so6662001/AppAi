@@ -36,6 +36,8 @@ class GuardPolicy(BaseModel):
     clipboard_burst_count: int = 10
     remote_session_injected_multiplier: float = 0.2
     exclude_from_capture: bool = True
+    exclude_from_capture_in_remote_session: bool = False   # RDP 中开启会让合法用户也看到黑块
+    remote_session_force_visible_watermark: bool = True
     accessibility_mode: bool = False
 
 
