@@ -21,6 +21,28 @@ class SignalWeight(BaseModel):
     cap: float = 100
 
 
+class RdpHardening(BaseModel):
+    """自研 RDP 启动器对 MsRdpClient 控件的加固设置(与 C# RdpHardening 字段一致)."""
+    redirect_clipboard: bool = False
+    redirect_clipboard_when_low_risk: bool = True
+    redirect_drives: bool = False
+    redirect_printers: bool = True
+    redirect_smart_cards: bool = True
+    redirect_ports: bool = False
+    redirect_devices: bool = False
+    redirect_pnp_drives: bool = False
+    start_program_only: bool = True
+    launcher_exclude_from_capture: bool = True
+    disconnect_at_level: str = "Critical"
+    # 服务端专用:未配对(绕过自研启动器、用 mstsc / 第三方客户端直连)的远程会话导出如何处理:allow / approval / deny
+    unpaired_remote_export: str = "approval"
+    # 服务端专用:启动器本地风险达到该分数时,建议关闭剪贴板 / 拒绝连接
+    clipboard_off_score: float = 30
+    deny_connect_score: float = 60
+    # 服务端专用:启动票据有效期(秒)
+    ticket_ttl_sec: int = 300
+
+
 class GuardPolicy(BaseModel):
     version: int = 1
     thresholds: dict[str, float] = Field(default_factory=lambda: {"elevated": 30, "high": 60, "critical": 85})
@@ -39,6 +61,7 @@ class GuardPolicy(BaseModel):
     exclude_from_capture_in_remote_session: bool = False   # RDP 中开启会让合法用户也看到黑块
     remote_session_force_visible_watermark: bool = True
     accessibility_mode: bool = False
+    rdp: RdpHardening = Field(default_factory=RdpHardening)
 
 
 class GuardEvent(BaseModel):
@@ -47,6 +70,9 @@ class GuardEvent(BaseModel):
     user_id: int
     device_id: str = ""
     session_id: str = ""
+    side: str = "local"              # local / remote / launcher
+    link_id: Optional[str] = None
+    client_name: Optional[str] = None
     at: datetime
     type: str = "signal"
     kind: Optional[str] = None
@@ -99,6 +125,58 @@ class DeviceDirectiveIn(BaseModel):
     reason: str = ""
     minutes: int = 60
     trusted: Optional[bool] = None
+
+
+# ----------------------------------------------------------------- 双端绑定(自研 RDP 启动器 ↔ 远程会话内 ERP)
+class SessionLaunchIn(BaseModel):
+    tenant_id: int
+    user_id: int
+    device_id: str
+    machine_name: str = ""
+    local_score: float = 0
+    local_level: str = "Low"
+
+
+class SessionLaunchOut(BaseModel):
+    ticket: str = ""
+    link_id: str = ""
+    expires_at: int = 0
+    connect_advice: str = "allow"    # allow / clipboard_off / deny
+    message: Optional[str] = None
+
+
+class SessionBindIn(BaseModel):
+    tenant_id: int
+    user_id: int
+    ticket: Optional[str] = None
+    client_name: str = ""
+    client_address: str = ""
+    remote_device_id: str = ""
+
+
+class SessionBindOut(BaseModel):
+    linked: bool
+    link_id: Optional[str] = None
+    device_id: Optional[str] = None
+    matched_by: str = "none"         # ticket / client_name / none
+    message: Optional[str] = None
+
+
+class SessionLinkRecord(BaseModel):
+    link_id: str
+    tenant_id: int
+    user_id: int
+    launcher_device_id: str
+    machine_name: str = ""
+    ticket_nonce: str = ""
+    ticket_expires_at: int = 0
+    local_score: float = 0
+    status: str = "issued"           # issued / bound / expired
+    remote_device_id: Optional[str] = None
+    client_name: Optional[str] = None
+    client_address: Optional[str] = None
+    created_at: datetime
+    bound_at: Optional[datetime] = None
 
 
 class ExportRequestRecord(BaseModel):

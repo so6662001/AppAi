@@ -31,6 +31,8 @@ namespace SteelGuard.AntiRpa.Core
         ExportAnomaly,
         /// <summary>RDP / 远程会话。</summary>
         RemoteSession,
+        /// <summary>远程会话但没有配对的自研启动器(可能用 mstsc / 第三方 RDP 客户端绕过本地防护)。</summary>
+        UnpairedRemoteSession,
         /// <summary>调试器附加。</summary>
         DebuggerAttached,
         /// <summary>运行在虚拟机中。</summary>

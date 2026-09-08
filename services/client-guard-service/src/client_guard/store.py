@@ -7,12 +7,17 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Protocol
 
-from .models import ExportRequestRecord, GuardEvent, GuardPolicy
+from .models import ExportRequestRecord, GuardEvent, GuardPolicy, SessionLinkRecord
 
 log = logging.getLogger("client-guard.store")
 
 
 class Store(Protocol):
+    def put_link(self, r: SessionLinkRecord) -> None: ...
+    def get_link(self, link_id: str) -> Optional[SessionLinkRecord]: ...
+    def find_link_by_nonce(self, tenant_id: int, user_id: int, nonce: str) -> Optional[SessionLinkRecord]: ...
+    def find_link_by_machine(self, tenant_id: int, user_id: int, machine_name: str, since: datetime) -> Optional[SessionLinkRecord]: ...
+    def has_launcher_activity(self, tenant_id: int, user_id: int, since: datetime) -> bool: ...
     def get_policy(self, tenant_id: int) -> Optional[GuardPolicy]: ...
     def put_policy(self, tenant_id: int, policy: GuardPolicy, updated_by: int | None) -> None: ...
     def add_events(self, events: list[GuardEvent]) -> int: ...
@@ -39,6 +44,39 @@ class MemoryStore:
         self._requests: dict[str, ExportRequestRecord] = {}
         self._used_nonces: set[str] = set()
         self._devices: dict[tuple[int, int, str], dict] = {}
+        self._links: dict[str, SessionLinkRecord] = {}
+
+    # ---- 双端绑定 ----
+    def put_link(self, r):
+        with self._lock:
+            self._links[r.link_id] = r
+            if len(self._links) > 50_000:
+                for k in sorted(self._links, key=lambda k: self._links[k].created_at)[:10_000]:
+                    del self._links[k]
+
+    def get_link(self, link_id):
+        with self._lock:
+            return self._links.get(link_id)
+
+    def find_link_by_nonce(self, tenant_id, user_id, nonce):
+        with self._lock:
+            for r in self._links.values():
+                if r.tenant_id == tenant_id and r.user_id == user_id and r.ticket_nonce == nonce:
+                    return r
+            return None
+
+    def find_link_by_machine(self, tenant_id, user_id, machine_name, since):
+        with self._lock:
+            cands = [r for r in self._links.values()
+                     if r.tenant_id == tenant_id and r.user_id == user_id and r.machine_name.lower() == machine_name.lower()
+                     and _utc(r.created_at) >= since]
+            cands.sort(key=lambda r: r.created_at, reverse=True)
+            return cands[0] if cands else None
+
+    def has_launcher_activity(self, tenant_id, user_id, since):
+        with self._lock:
+            return any(e.tenant_id == tenant_id and e.user_id == user_id and e.side == "launcher" and _utc(e.at) >= since
+                       for e in self._events)
 
     def get_policy(self, tenant_id):
         with self._lock:
@@ -161,10 +199,11 @@ class MySqlStore:
         for e in events:
             try:
                 self._exec(
-                    "INSERT IGNORE INTO client_guard_event(event_id,tenant_id,user_id,device_id,session_id,event_at,event_type,"
+                    "INSERT IGNORE INTO client_guard_event(event_id,tenant_id,user_id,device_id,session_id,side,link_id,client_name,event_at,event_type,"
                     "signal_kind,weight,client_score,client_level,detail,breakdown_json,client_version,os) VALUES("
-                    ":eid,:t,:u,:d,:s,:at,:ty,:k,:w,:sc,:lv,:de,:bd,:cv,:os)",
-                    eid=e.event_id, t=e.tenant_id, u=e.user_id, d=e.device_id, s=e.session_id, at=_utc(e.at).replace(tzinfo=None),
+                    ":eid,:t,:u,:d,:s,:side,:lk,:cn,:at,:ty,:k,:w,:sc,:lv,:de,:bd,:cv,:os)",
+                    eid=e.event_id, t=e.tenant_id, u=e.user_id, d=e.device_id, s=e.session_id, side=e.side[:16], lk=e.link_id,
+                    cn=(e.client_name or "")[:64] or None, at=_utc(e.at).replace(tzinfo=None),
                     ty=e.type, k=e.kind, w=e.weight, sc=e.score, lv=e.level, de=(e.detail or "")[:1024],
                     bd=json.dumps(e.breakdown) if e.breakdown else None, cv=e.client_version, os=e.os[:128])
                 n += 1
@@ -174,12 +213,54 @@ class MySqlStore:
 
     def recent_events(self, tenant_id, user_id, since):
         rows = self._exec(
-            "SELECT event_id,tenant_id,user_id,device_id,session_id,event_at,event_type,signal_kind,weight,client_score,client_level,detail "
+            "SELECT event_id,tenant_id,user_id,device_id,session_id,event_at,event_type,signal_kind,weight,client_score,client_level,detail,"
+            "side,link_id,client_name "
             "FROM client_guard_event WHERE tenant_id=:t AND user_id=:u AND event_at>=:s ORDER BY event_at",
             t=tenant_id, u=user_id, s=since.replace(tzinfo=None)).all()
         return [GuardEvent(event_id=r[0], tenant_id=r[1], user_id=r[2], device_id=r[3] or "", session_id=r[4] or "",
                            at=r[5].replace(tzinfo=timezone.utc), type=r[6], kind=r[7], weight=r[8], score=float(r[9] or 0),
-                           level=r[10], detail=r[11]) for r in rows]
+                           level=r[10], detail=r[11], side=r[12] or "local", link_id=r[13], client_name=r[14]) for r in rows]
+
+    # ---- 双端绑定 ----
+    _LINK_COLS = ("link_id,tenant_id,user_id,launcher_device_id,machine_name,ticket_nonce,ticket_expires_at,local_score,status,"
+                  "remote_device_id,client_name,client_address,created_at,bound_at")
+
+    def put_link(self, r):
+        self._exec(
+            f"INSERT INTO client_guard_session_link({self._LINK_COLS}) VALUES(:lid,:t,:u,:ld,:mn,:nonce,:texp,:ls,:st,:rd,:cn,:ca,:cr,:ba) "
+            "ON DUPLICATE KEY UPDATE status=:st, remote_device_id=:rd, client_name=:cn, client_address=:ca, bound_at=:ba",
+            lid=r.link_id, t=r.tenant_id, u=r.user_id, ld=r.launcher_device_id, mn=r.machine_name[:64], nonce=r.ticket_nonce,
+            texp=datetime.fromtimestamp(r.ticket_expires_at, tz=timezone.utc).replace(tzinfo=None) if r.ticket_expires_at else None,
+            ls=r.local_score, st=r.status, rd=r.remote_device_id, cn=(r.client_name or "")[:64] or None, ca=(r.client_address or "")[:64] or None,
+            cr=_utc(r.created_at).replace(tzinfo=None), ba=_utc(r.bound_at).replace(tzinfo=None) if r.bound_at else None)
+
+    def _row_to_link(self, r) -> SessionLinkRecord:
+        return SessionLinkRecord(
+            link_id=r[0], tenant_id=r[1], user_id=r[2], launcher_device_id=r[3], machine_name=r[4] or "", ticket_nonce=r[5] or "",
+            ticket_expires_at=int(r[6].replace(tzinfo=timezone.utc).timestamp()) if r[6] else 0, local_score=float(r[7] or 0),
+            status=r[8], remote_device_id=r[9], client_name=r[10], client_address=r[11],
+            created_at=r[12].replace(tzinfo=timezone.utc), bound_at=r[13].replace(tzinfo=timezone.utc) if r[13] else None)
+
+    def get_link(self, link_id):
+        r = self._exec(f"SELECT {self._LINK_COLS} FROM client_guard_session_link WHERE link_id=:l", l=link_id).first()
+        return self._row_to_link(r) if r else None
+
+    def find_link_by_nonce(self, tenant_id, user_id, nonce):
+        r = self._exec(f"SELECT {self._LINK_COLS} FROM client_guard_session_link WHERE tenant_id=:t AND user_id=:u AND ticket_nonce=:n",
+                       t=tenant_id, u=user_id, n=nonce).first()
+        return self._row_to_link(r) if r else None
+
+    def find_link_by_machine(self, tenant_id, user_id, machine_name, since):
+        r = self._exec(
+            f"SELECT {self._LINK_COLS} FROM client_guard_session_link WHERE tenant_id=:t AND user_id=:u AND LOWER(machine_name)=:m "
+            "AND created_at>=:s ORDER BY created_at DESC LIMIT 1",
+            t=tenant_id, u=user_id, m=machine_name.lower(), s=since.replace(tzinfo=None)).first()
+        return self._row_to_link(r) if r else None
+
+    def has_launcher_activity(self, tenant_id, user_id, since):
+        return bool(self._exec(
+            "SELECT 1 FROM client_guard_event WHERE tenant_id=:t AND user_id=:u AND side='launcher' AND event_at>=:s LIMIT 1",
+            t=tenant_id, u=user_id, s=since.replace(tzinfo=None)).first())
 
     def export_usage(self, tenant_id, user_id, now):
         day = self._exec("SELECT row_total FROM client_guard_export_ledger WHERE tenant_id=:t AND user_id=:u AND ledger_date=:d",

@@ -21,6 +21,12 @@ namespace SteelGuard.AntiRpa.Core.Telemetry
         [JsonPropertyName("user_id")] public long UserId { get; set; }
         [JsonPropertyName("device_id")] public string DeviceId { get; set; } = "";
         [JsonPropertyName("session_id")] public string SessionId { get; set; } = "";
+        /// <summary>local(本机直装) / remote(RDS 会话内的 ERP) / launcher(本地 RDP 启动器)</summary>
+        [JsonPropertyName("side")] public string Side { get; set; } = "local";
+        /// <summary>启动器与远程会话的绑定 id(双端联动时相同)。</summary>
+        [JsonPropertyName("link_id")] public string? LinkId { get; set; }
+        /// <summary>远程会话看到的 RDP 客户机名(WTSClientName),用于无 ticket 时的兜底匹配。</summary>
+        [JsonPropertyName("client_name")] public string? ClientName { get; set; }
         [JsonPropertyName("at")] public DateTimeOffset At { get; set; } = DateTimeOffset.UtcNow;
         /// <summary>signal / decision / level_change / export / heartbeat</summary>
         [JsonPropertyName("type")] public string Type { get; set; } = "signal";

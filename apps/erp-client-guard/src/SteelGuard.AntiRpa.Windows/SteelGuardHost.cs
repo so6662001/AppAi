@@ -41,6 +41,18 @@ namespace SteelGuard.AntiRpa.Windows
         public bool EnableInputHooks { get; set; } = true;
         /// <summary>初始策略(为空用内置默认,之后被服务端下发覆盖)。</summary>
         public GuardPolicy? InitialPolicy { get; set; }
+        /// <summary>
+        /// 运行侧:local(本机直装 ERP)/ remote(RDS 会话内的 ERP)/ launcher(本地 RDP 启动器)。
+        /// 为空时自动判定:远程会话 → remote,否则 local。
+        /// </summary>
+        public string? Side { get; set; }
+        /// <summary>
+        /// 启动票据(远程会话内的 ERP 使用):由本地启动器申请并通过 StartProgram 命令行传入,
+        /// 为空时自动从 <c>Environment.GetCommandLineArgs()</c> 解析 <c>--guard-ticket=</c>。
+        /// </summary>
+        public string? LaunchTicket { get; set; }
+        /// <summary>远程会话内是否尝试与本地启动器绑定(默认 true;无票据时按 WTSClientName 兜底匹配)。</summary>
+        public bool BindRemoteSession { get; set; } = true;
     }
 
     /// <summary>
@@ -59,9 +71,20 @@ namespace SteelGuard.AntiRpa.Windows
         public IGuardClock Clock { get; }
         public UiAutomationProbe UiaProbe { get; }
         public EnvironmentProbe EnvProbe { get; }
-        public string DeviceId { get; }
+        /// <summary>设备指纹。远程会话绑定成功后会切换为启动器的设备指纹(双端同设备)。</summary>
+        public string DeviceId { get; private set; }
         public string SessionId { get; } = Guid.NewGuid().ToString("N");
         public GuardPolicy Policy => Engine.Policy;
+        /// <summary>local / remote / launcher</summary>
+        public string Side { get; }
+        /// <summary>双端绑定 id(未绑定为 null)。</summary>
+        public string? LinkId { get; private set; }
+        /// <summary>远程会话信息(WTS);非远程会话时 IsRemote=false。</summary>
+        public RemoteSessionInfo RemoteSession { get; }
+        /// <summary>服务端 API(离线模式为 null)。</summary>
+        public GuardApiClient? Api => _api;
+        /// <summary>双端绑定完成(成功或失败)。</summary>
+        public event EventHandler<SessionBindResult>? SessionBound;
 
         private readonly InputInjectionMonitor? _input;
         private readonly ClipboardGuard _clipboard;
@@ -88,6 +111,8 @@ namespace SteelGuard.AntiRpa.Windows
             Options = options ?? throw new ArgumentNullException(nameof(options));
             Clock = SystemClock.Instance;
             DeviceId = options.DeviceId ?? ComputeDeviceId();
+            RemoteSession = RemoteSessionInfo.Query();
+            Side = options.Side ?? (RemoteSession.IsRemote ? "remote" : "local");
             Engine = new RiskEngine(options.InitialPolicy ?? GuardPolicy.Default, Clock);
             Analyzer = new BehaviorAnalyzer(Engine);
             Exports = new ExportGovernor(Engine, Clock);
@@ -136,13 +161,47 @@ namespace SteelGuard.AntiRpa.Windows
             h._probeTimer.Start();
             h._policyTimer.Start();
             _ = h.RefreshPolicyAsync();
-            h.Emit(new GuardEvent { Type = "heartbeat", Detail = "start" });
+            if (h.Side == "remote" && options.BindRemoteSession) _ = h.BindRemoteSessionAsync();
+            h.Emit(new GuardEvent { Type = "heartbeat", Detail = "start side=" + h.Side });
             return h;
         }
 
         // ------------------------------------------------------------------
         /// <summary>当前是否运行在 RDP / 远程会话中(所有输入都是注入、防截屏属性会把远程画面变黑)。</summary>
-        public bool IsRemoteSession => Native.NativeMethods.GetSystemMetrics(Native.NativeMethods.SM_REMOTESESSION) != 0;
+        public bool IsRemoteSession => RemoteSession.IsRemote;
+
+        /// <summary>
+        /// 远程会话内的 ERP 与本地启动器绑定:优先用启动票据,其次用 WTSClientName 兜底。
+        /// 成功后沿用启动器的 device_id,双端事件在服务端合并为同一设备评分。
+        /// </summary>
+        public async Task<SessionBindResult?> BindRemoteSessionAsync(CancellationToken ct = default)
+        {
+            if (_api == null) return null;
+            var ticket = Options.LaunchTicket ?? GuardTicket.FromArgs(Environment.GetCommandLineArgs());
+            var r = await _api.BindSessionAsync(Options.TenantId, Options.UserId, ticket,
+                RemoteSession.ClientName, RemoteSession.ClientAddress, DeviceId, ct).ConfigureAwait(false);
+            if (r == null) r = new SessionBindResult { Linked = false, Message = "guard service unreachable" };
+            if (r.Linked)
+            {
+                LinkId = r.LinkId;
+                if (!string.IsNullOrEmpty(r.DeviceId)) DeviceId = r.DeviceId!;
+            }
+            else
+            {
+                // 没有任何启动器配对的远程会话:可能绕过了自研启动器(用 mstsc / 第三方客户端直连),给一个中等信号。
+                Engine.Report(SignalKind.UnpairedRemoteSession, "unpaired remote session: " + (r.Message ?? r.MatchedBy ?? ""));
+            }
+            Emit(new GuardEvent { Type = "session_bind", Detail = $"linked={r.Linked} by={r.MatchedBy} client={RemoteSession.ClientName}@{RemoteSession.ClientAddress}" });
+            SessionBound?.Invoke(this, r);
+            return r;
+        }
+
+        /// <summary>启动器侧:申请到启动票据后登记 link_id,之后所有事件带上该 id。</summary>
+        public void AttachLink(string linkId)
+        {
+            LinkId = linkId;
+            Emit(new GuardEvent { Type = "session_bind", Detail = "launcher link attached" });
+        }
 
         /// <summary>保护一个窗体:防截屏 + WM_GETOBJECT 探针 + 按等级隐藏 UIA 树。</summary>
         public void Protect(Form form)
@@ -335,6 +394,9 @@ namespace SteelGuard.AntiRpa.Windows
             e.UserId = Options.UserId;
             e.DeviceId = DeviceId;
             e.SessionId = SessionId;
+            e.Side = Side;
+            e.LinkId = LinkId;
+            e.ClientName = Side == "launcher" ? Environment.MachineName : (RemoteSession.IsRemote ? RemoteSession.ClientName : null);
             e.Score = Engine.Score;
             e.Level = Engine.Level.ToString();
             e.ClientVersion = Options.ClientVersion;

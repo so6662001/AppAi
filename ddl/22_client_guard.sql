@@ -23,6 +23,9 @@ CREATE TABLE IF NOT EXISTS client_guard_event (
   user_id          BIGINT       NOT NULL,
   device_id        VARCHAR(64)  NOT NULL DEFAULT '',
   session_id       CHAR(32)     NOT NULL DEFAULT '',
+  side             VARCHAR(16)  NOT NULL DEFAULT 'local' COMMENT 'local=本机直装 / remote=RDS 会话内 ERP / launcher=本地 RDP 启动器',
+  link_id          CHAR(16)     NULL COMMENT '启动器 ↔ 远程会话 绑定 id',
+  client_name      VARCHAR(64)  NULL COMMENT '远程端: WTSClientName; 启动器端: 本机名',
   event_at         DATETIME(3)  NOT NULL,
   received_at      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   event_type       VARCHAR(32)  NOT NULL COMMENT 'signal/decision/level_change/export/export_decision/copy/challenge/heartbeat/error',
@@ -38,8 +41,30 @@ CREATE TABLE IF NOT EXISTS client_guard_event (
   PRIMARY KEY (id),
   UNIQUE KEY uk_event (event_id),
   KEY idx_tenant_user_time (tenant_id, user_id, event_at),
-  KEY idx_type_time (event_type, event_at)
+  KEY idx_type_time (event_type, event_at),
+  KEY idx_link (link_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='客户端防护遥测事件';
+
+-- 2b. 自研 RDP 启动器 ↔ 远程会话 绑定(双端联动评分 / 未配对会话识别)
+CREATE TABLE IF NOT EXISTS client_guard_session_link (
+  link_id            CHAR(16)     NOT NULL,
+  tenant_id          BIGINT       NOT NULL,
+  user_id            BIGINT       NOT NULL,
+  launcher_device_id VARCHAR(64)  NOT NULL COMMENT '本地启动器设备指纹(绑定后远程端沿用)',
+  machine_name       VARCHAR(64)  NOT NULL DEFAULT '' COMMENT '本地机器名(= 远程端看到的 WTSClientName)',
+  ticket_nonce       CHAR(12)     NOT NULL DEFAULT '',
+  ticket_expires_at  DATETIME     NULL,
+  local_score        DECIMAL(6,2) NOT NULL DEFAULT 0 COMMENT '申请票据时的本地风险分',
+  status             VARCHAR(16)  NOT NULL DEFAULT 'issued' COMMENT 'issued/bound/expired',
+  remote_device_id   VARCHAR(64)  NULL,
+  client_name        VARCHAR(64)  NULL,
+  client_address     VARCHAR(64)  NULL,
+  created_at         DATETIME(3)  NOT NULL,
+  bound_at           DATETIME(3)  NULL,
+  PRIMARY KEY (link_id),
+  KEY idx_tenant_user_machine (tenant_id, user_id, machine_name, created_at),
+  KEY idx_nonce (tenant_id, user_id, ticket_nonce)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='RDP 启动器与远程会话绑定';
 
 -- 3. 导出申请 / 审批
 CREATE TABLE IF NOT EXISTS client_guard_export_request (

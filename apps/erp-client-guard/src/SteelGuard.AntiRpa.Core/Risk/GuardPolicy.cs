@@ -35,6 +35,28 @@ namespace SteelGuard.AntiRpa.Core.Risk
         [JsonPropertyName("allowed_hours")] public int[] AllowedHours { get; set; } = Array.Empty<int>();
     }
 
+    /// <summary>自研 RDP 启动器对 MsRdpClient ActiveX 控件的加固设置(必须在 Connect 前应用)。</summary>
+    public sealed class RdpHardening
+    {
+        /// <summary>剪贴板重定向。false = 服务器里复制的内容出不来(截断"复制 → 本地粘贴"通道)。</summary>
+        [JsonPropertyName("redirect_clipboard")] public bool RedirectClipboard { get; set; } = false;
+        /// <summary>低风险时允许剪贴板(由启动器在 Connect 前按当前风险决定)。</summary>
+        [JsonPropertyName("redirect_clipboard_when_low_risk")] public bool RedirectClipboardWhenLowRisk { get; set; } = true;
+        /// <summary>驱动器重定向。false = 服务器里导出的 Excel 无法直接落到本地盘。</summary>
+        [JsonPropertyName("redirect_drives")] public bool RedirectDrives { get; set; } = false;
+        [JsonPropertyName("redirect_printers")] public bool RedirectPrinters { get; set; } = true;
+        [JsonPropertyName("redirect_smart_cards")] public bool RedirectSmartCards { get; set; } = true;
+        [JsonPropertyName("redirect_ports")] public bool RedirectPorts { get; set; } = false;
+        [JsonPropertyName("redirect_devices")] public bool RedirectDevices { get; set; } = false;
+        [JsonPropertyName("redirect_pnp_drives")] public bool RedirectDynamicDrives { get; set; } = false;
+        /// <summary>只发布 ERP 程序(RemoteApp 风格 StartProgram),不给完整桌面。</summary>
+        [JsonPropertyName("start_program_only")] public bool StartProgramOnly { get; set; } = true;
+        /// <summary>启动器窗口启用防截屏(本地端可用,远程画面在本地是普通窗口)。</summary>
+        [JsonPropertyName("launcher_exclude_from_capture")] public bool LauncherExcludeFromCapture { get; set; } = true;
+        /// <summary>风险达到该等级时启动器主动断开 RDP。</summary>
+        [JsonPropertyName("disconnect_at_level")] public RiskLevel DisconnectAtLevel { get; set; } = RiskLevel.Critical;
+    }
+
     /// <summary>
     /// 客户端防护策略。可由服务端 JSON 下发覆盖(<see cref="FromJson"/>),
     /// 默认值来自 <see cref="Default"/>。
@@ -94,6 +116,9 @@ namespace SteelGuard.AntiRpa.Core.Risk
 
         /// <summary>无障碍模式:关闭 UIA 树隐藏(供视障员工使用)。</summary>
         [JsonPropertyName("accessibility_mode")] public bool AccessibilityMode { get; set; } = false;
+
+        /// <summary>自研 RDP 启动器加固设置。</summary>
+        [JsonPropertyName("rdp")] public RdpHardening Rdp { get; set; } = new RdpHardening();
 
         public double ElevatedThreshold => Get("elevated", 30);
         public double HighThreshold => Get("high", 60);
@@ -158,6 +183,7 @@ namespace SteelGuard.AntiRpa.Core.Risk
                     [SignalKind.ClipboardBurst] = new SignalWeight(15, 300, 30),
                     [SignalKind.ExportAnomaly] = new SignalWeight(20, 1800, 40),
                     [SignalKind.RemoteSession] = new SignalWeight(10, 7200, 10),
+                    [SignalKind.UnpairedRemoteSession] = new SignalWeight(25, 7200, 25),
                     [SignalKind.DebuggerAttached] = new SignalWeight(30, 3600, 30),
                     [SignalKind.VirtualMachine] = new SignalWeight(5, 7200, 5),
                     [SignalKind.ServerDirective] = new SignalWeight(100, 600, 100),

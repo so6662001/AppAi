@@ -29,6 +29,7 @@ DEFAULT_WEIGHTS: dict[str, SignalWeight] = {
     "ClipboardBurst": SignalWeight(weight=15, half_life_sec=300, cap=30),
     "ExportAnomaly": SignalWeight(weight=20, half_life_sec=1800, cap=40),
     "RemoteSession": SignalWeight(weight=10, half_life_sec=7200, cap=10),
+    "UnpairedRemoteSession": SignalWeight(weight=25, half_life_sec=7200, cap=25),
     "DebuggerAttached": SignalWeight(weight=30, half_life_sec=3600, cap=30),
     "VirtualMachine": SignalWeight(weight=5, half_life_sec=7200, cap=5),
     "ServerDirective": SignalWeight(weight=100, half_life_sec=600, cap=100),
@@ -81,8 +82,7 @@ def server_only_signals(policy: GuardPolicy, events: list[GuardEvent], now: date
     """从事件流派生只有服务端能算的信号."""
     out: list[tuple[str, datetime, float | None]] = []
     recent = [e for e in events if (now - _utc(e.at)) <= timedelta(minutes=5)]
-    devices = {e.device_id for e in recent if e.device_id}
-    if len(devices) >= 2:
+    if len(concurrent_devices(recent)) >= 2:
         out.append(("MultiDeviceConcurrent", now, None))
     q = policy.export_quota
     if exports_last_hour > q.max_exports_per_hour or rows_today > q.max_rows_per_day:
@@ -92,6 +92,34 @@ def server_only_signals(policy: GuardPolicy, events: list[GuardEvent], now: date
     if len(off_hours_exports) >= 3:
         out.append(("OffHoursBulk", now, None))
     return out
+
+
+def concurrent_devices(recent: list[GuardEvent]) -> set[str]:
+    """把"物理设备"数出来:
+    - 自研启动器(side=launcher)与它绑定的远程会话(side=remote,同 link_id 或绑定后沿用同一 device_id)算 1 台;
+    - 没配对的远程会话按 client_name(RDP 客户机名)归并,没有 client_name 才退化为 device_id。
+    这样"一台 PC 通过启动器登录 RDS"不会被误报为多设备。
+    """
+    launchers = [e for e in recent if e.side == "launcher" and e.device_id]
+    launcher_devices = {e.device_id for e in launchers}
+    launcher_links = {e.link_id for e in launchers if e.link_id}
+    launcher_names = {e.client_name.lower() for e in launchers if e.client_name}
+    devices: set[str] = set(launcher_devices)
+    for e in recent:
+        if e.side == "launcher" or not e.device_id:
+            continue
+        if e.side == "remote":
+            if e.device_id in launcher_devices:            # 绑定后沿用启动器指纹
+                continue
+            if e.link_id and e.link_id in launcher_links:  # 绑定前发出的少量事件,同一 link
+                continue
+            name = (e.client_name or "").lower()
+            if name and name in launcher_names:            # 无票据:RDP 客户机名 = 启动器机器名
+                continue
+            devices.add("client:" + name if name else e.device_id)
+        else:
+            devices.add(e.device_id)
+    return devices
 
 
 def _utc(dt: datetime) -> datetime:

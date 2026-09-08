@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- 供自研 RDP 启动器(VB.NET / C# WinForms,承载 MsRdpClient ActiveX)引用 -->
+    <TargetFrameworks>net48;net8.0-windows</TargetFrameworks>
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>SteelGuard.AntiRpa.RdpLauncher</RootNamespace>
+    <AssemblyName>SteelGuard.AntiRpa.RdpLauncher</AssemblyName>
+    <Description>ERP 客户端防 RPA - 本地 RDP 启动器侧(RDP 控件加固、本地防截屏、双端绑定、风险断连)</Description>
+    <Version>0.1.0</Version>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <NoWarn>CA1416</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SteelGuard.AntiRpa.Core\SteelGuard.AntiRpa.Core.csproj" />
+    <ProjectReference Include="..\SteelGuard.AntiRpa.Windows\SteelGuard.AntiRpa.Windows.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    <Reference Include="System.Net.Http" />
+  </ItemGroup>
+
+</Project>

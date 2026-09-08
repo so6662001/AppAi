@@ -22,8 +22,30 @@ namespace SteelGuard.AntiRpa.Windows
         [JsonPropertyName("approver")] public string? Approver { get; set; }
     }
 
+    /// <summary>启动票据申请结果(本地启动器)。</summary>
+    public sealed class LaunchTicketResult
+    {
+        [JsonPropertyName("ticket")] public string Ticket { get; set; } = "";
+        [JsonPropertyName("link_id")] public string LinkId { get; set; } = "";
+        [JsonPropertyName("expires_at")] public long ExpiresAt { get; set; }
+        /// <summary>服务端基于当前风险给出的连接建议:allow / clipboard_off / deny</summary>
+        [JsonPropertyName("connect_advice")] public string ConnectAdvice { get; set; } = "allow";
+        [JsonPropertyName("message")] public string? Message { get; set; }
+    }
+
+    /// <summary>远程会话绑定结果(RDS 会话内的 ERP)。</summary>
+    public sealed class SessionBindResult
+    {
+        [JsonPropertyName("linked")] public bool Linked { get; set; }
+        [JsonPropertyName("link_id")] public string? LinkId { get; set; }
+        /// <summary>启动器的设备指纹;绑定成功后远程端沿用它,双端事件归为同一设备。</summary>
+        [JsonPropertyName("device_id")] public string? DeviceId { get; set; }
+        [JsonPropertyName("matched_by")] public string? MatchedBy { get; set; }   // ticket / client_name / none
+        [JsonPropertyName("message")] public string? Message { get; set; }
+    }
+
     /// <summary>
-    /// client-guard-service 客户端:策略拉取 / 导出申请 / token 远程校验。
+    /// client-guard-service 客户端:策略拉取 / 导出申请 / token 远程校验 / 双端绑定。
     /// 所有方法都吞掉网络异常并返回 null / 拒绝,避免影响 ERP 主流程;调用方按"服务不可达 → 使用默认策略"处理。
     /// </summary>
     public sealed class GuardApiClient : IDisposable
@@ -95,6 +117,46 @@ namespace SteelGuard.AntiRpa.Windows
                 return r;
             }
             catch (Exception ex) { return new ApprovalTokenVerifier.Result { Valid = false, Error = "verify unreachable: " + ex.Message }; }
+        }
+
+        /// <summary>本地启动器:在 RDP Connect 前申请启动票据(携带本地风险分与设备指纹)。</summary>
+        public async Task<LaunchTicketResult?> RequestLaunchTicketAsync(long tenantId, long userId, string deviceId, string machineName,
+            double localScore, string localLevel, CancellationToken ct = default)
+        {
+            try
+            {
+                var body = JsonSerializer.Serialize(new
+                {
+                    tenant_id = tenantId, user_id = userId, device_id = deviceId, machine_name = machineName,
+                    local_score = localScore, local_level = localLevel,
+                });
+                using var content = new StringContent(body, Encoding.UTF8, "application/json");
+                using var resp = await _http.PostAsync($"{_base}/session/launch", content, ct).ConfigureAwait(false);
+                var txt = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
+                if (!resp.IsSuccessStatusCode) return new LaunchTicketResult { ConnectAdvice = "deny", Message = $"HTTP {(int)resp.StatusCode}: {txt}" };
+                return JsonSerializer.Deserialize<LaunchTicketResult>(txt, Json);
+            }
+            catch { return null; }   // 服务不可达:由调用方决定 fail-open / fail-close
+        }
+
+        /// <summary>远程会话内的 ERP:用票据(或客户机名兜底)绑定到本地启动器。</summary>
+        public async Task<SessionBindResult?> BindSessionAsync(long tenantId, long userId, string? ticket, string clientName,
+            string clientAddress, string remoteDeviceId, CancellationToken ct = default)
+        {
+            try
+            {
+                var body = JsonSerializer.Serialize(new
+                {
+                    tenant_id = tenantId, user_id = userId, ticket, client_name = clientName,
+                    client_address = clientAddress, remote_device_id = remoteDeviceId,
+                });
+                using var content = new StringContent(body, Encoding.UTF8, "application/json");
+                using var resp = await _http.PostAsync($"{_base}/session/bind", content, ct).ConfigureAwait(false);
+                var txt = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
+                if (!resp.IsSuccessStatusCode) return new SessionBindResult { Linked = false, Message = $"HTTP {(int)resp.StatusCode}: {txt}" };
+                return JsonSerializer.Deserialize<SessionBindResult>(txt, Json);
+            }
+            catch { return null; }
         }
 
         public void Dispose() => _http.Dispose();

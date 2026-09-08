@@ -12,6 +12,9 @@
   POST /v1/export/consume               业务后端真正导出前:校验 + 一次性消费 + 记账
   GET  /v1/risk/{tenant_id}/{user_id}   当前服务端评分
   PUT  /v1/devices/{tenant_id}/{user_id}/{device_id}/directive   人工锁定 / 解锁 / 标记可信
+  POST /v1/session/launch               自研 RDP 启动器:连接前申请启动票据(带本地风险)
+  POST /v1/session/bind                 远程会话内 ERP:用票据 / 客户机名绑定到启动器
+  GET  /v1/session/{link_id}            查看绑定
 """
 from __future__ import annotations
 import logging
@@ -25,7 +28,8 @@ from fastapi import FastAPI, HTTPException, Query
 
 from . import approval, scoring
 from .models import (ApproveIn, DeviceDirectiveIn, ExportRequestIn, ExportRequestOut, ExportRequestRecord,
-                     GuardEvent, GuardPolicy, TelemetryResponse)
+                     GuardEvent, GuardPolicy, SessionBindIn, SessionBindOut, SessionLaunchIn, SessionLaunchOut,
+                     SessionLinkRecord, TelemetryResponse)
 from .store import MemoryStore, MySqlStore, Store
 
 log = logging.getLogger("client-guard")
@@ -156,6 +160,20 @@ def request_export(req: ExportRequestIn):
     rec.risk_score = max(req.risk_score, server_score)
     trusted = store.is_trusted(req.tenant_id, req.user_id, req.device_id)
 
+    # 绕过自研启动器的远程会话(mstsc / 第三方 RDP 客户端直连,本地端无任何防护)
+    unpaired = _is_unpaired_remote(req.tenant_id, req.user_id, req.device_id, now)
+    if unpaired and not trusted:
+        mode = policy.rdp.unpaired_remote_export
+        if mode == "deny":
+            rec.status, rec.approve_note = "denied", "unpaired remote session"
+            store.put_request(rec)
+            return ExportRequestOut(status="denied", request_id=rec.request_id, message="请通过公司远程登录器登录后再导出")
+        if mode == "approval":
+            rec.status, rec.reason = "pending", (rec.reason + " | unpaired remote session").strip(" |")
+            store.put_request(rec)
+            return ExportRequestOut(status="pending", request_id=rec.request_id,
+                                    message="当前远程会话未通过公司登录器建立,导出需主管审批")
+
     # 自动放行:风险低 且 (行数在阈值内 或 可信设备)
     if level == "Low" and (req.row_count <= q.approval_threshold_rows or trusted):
         _issue_for(rec, "auto", max(req.row_count, q.approval_threshold_rows), 30)
@@ -228,6 +246,94 @@ def record_export(tenant_id: int, user_id: int, row_count: int):
     store.record_export(tenant_id, user_id, row_count, _now())
     hour, day = store.export_usage(tenant_id, user_id, _now())
     return {"ok": True, "exports_last_hour": hour, "rows_today": day}
+
+
+# ----------------------------------------------------------------- 双端绑定(自研 RDP 启动器)
+def _is_unpaired_remote(tenant_id: int, user_id: int, device_id: str, now: datetime) -> bool:
+    """该设备最近的事件是否来自"没有配对启动器"的远程会话."""
+    events = store.recent_events(tenant_id, user_id, now - timedelta(hours=12))
+    mine = [e for e in events if e.device_id == device_id]
+    if not mine:
+        return False
+    last = mine[-1]
+    if last.side != "remote":
+        return False
+    if any(e.link_id for e in mine if e.side == "remote"):
+        return False
+    launcher_names = {e.client_name.lower() for e in events if e.side == "launcher" and e.client_name}
+    if last.client_name and last.client_name.lower() in launcher_names:
+        return False
+    return True
+
+
+@app.post("/v1/session/launch", response_model=SessionLaunchOut)
+def session_launch(body: SessionLaunchIn):
+    """本地启动器在 RDP Connect 前调用:综合 本地风险 + 服务端历史 给出连接建议,并签发启动票据."""
+    now = _now()
+    policy = _policy(body.tenant_id)
+    directive, dreason = store.get_directive(body.tenant_id, body.user_id, body.device_id, now)
+    if directive == "lock":
+        return SessionLaunchOut(connect_advice="deny", message="该设备已被锁定:" + dreason)
+    server_score, _, _ = _server_score(body.tenant_id, body.user_id, now)
+    score = max(body.local_score, server_score)
+    trusted = store.is_trusted(body.tenant_id, body.user_id, body.device_id)
+    if score >= policy.rdp.deny_connect_score and not trusted:
+        return SessionLaunchOut(connect_advice="deny", message=f"风险评分 {score:.0f},拒绝建立远程连接")
+
+    link_id = secrets.token_hex(8)
+    nonce = secrets.token_hex(6)
+    exp = int(now.timestamp()) + policy.rdp.ticket_ttl_sec
+    ticket = approval.issue(SECRET, body.tenant_id, body.user_id, f"launch:{link_id}", 0, exp, body.device_id, nonce)
+    store.put_link(SessionLinkRecord(link_id=link_id, tenant_id=body.tenant_id, user_id=body.user_id, launcher_device_id=body.device_id,
+                                     machine_name=body.machine_name, ticket_nonce=nonce, ticket_expires_at=exp,
+                                     local_score=body.local_score, status="issued", created_at=now))
+    advice = "clipboard_off" if (score >= policy.rdp.clipboard_off_score and not trusted) else "allow"
+    return SessionLaunchOut(ticket=ticket, link_id=link_id, expires_at=exp, connect_advice=advice,
+                            message=None if advice == "allow" else f"风险评分 {score:.0f},本次连接关闭剪贴板")
+
+
+@app.post("/v1/session/bind", response_model=SessionBindOut)
+def session_bind(body: SessionBindIn):
+    """远程会话内 ERP 启动时调用:优先票据,其次按 RDP 客户机名匹配最近 10 分钟内的启动器."""
+    now = _now()
+    link: Optional[SessionLinkRecord] = None
+    matched = "none"
+    if body.ticket:
+        r = approval.verify(SECRET, body.ticket, tenant_id=body.tenant_id, user_id=body.user_id)
+        if not r.valid:
+            return SessionBindOut(linked=False, matched_by="none", message=f"invalid ticket: {r.error}")
+        if not r.data_set.startswith("launch:"):
+            return SessionBindOut(linked=False, matched_by="none", message="not a launch ticket")
+        link = store.get_link(r.data_set[len("launch:"):])
+        if link is None or link.ticket_nonce != r.nonce:
+            return SessionBindOut(linked=False, matched_by="none", message="ticket unknown")
+        if link.status == "bound" and link.remote_device_id not in (None, body.remote_device_id):
+            return SessionBindOut(linked=False, matched_by="none", message="ticket already bound to another session")
+        matched = "ticket"
+    elif body.client_name:
+        link = store.find_link_by_machine(body.tenant_id, body.user_id, body.client_name, now - timedelta(minutes=10))
+        if link is not None and link.status == "bound" and link.remote_device_id not in (None, body.remote_device_id):
+            link = None
+        matched = "client_name" if link else "none"
+
+    if link is None:
+        return SessionBindOut(linked=False, matched_by="none", message="no launcher found for this session")
+
+    link.status = "bound"
+    link.remote_device_id = body.remote_device_id
+    link.client_name = body.client_name or None
+    link.client_address = body.client_address or None
+    link.bound_at = now
+    store.put_link(link)
+    return SessionBindOut(linked=True, link_id=link.link_id, device_id=link.launcher_device_id, matched_by=matched)
+
+
+@app.get("/v1/session/{link_id}")
+def get_session_link(link_id: str):
+    r = store.get_link(link_id)
+    if not r:
+        raise HTTPException(404, "link not found")
+    return r.model_dump(mode="json", exclude={"ticket_nonce"})
 
 
 # ----------------------------------------------------------------- 设备指令
